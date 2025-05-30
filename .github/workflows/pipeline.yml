@@ -15,6 +15,11 @@ jobs:
       - name : Checkout do código
         uses: actions/checkout@v3
 
+      - name: Configurar ambiente Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
       - name: Cache de dependências Python
         uses: actions/cache@v3
         with:
@@ -22,11 +27,6 @@ jobs:
           key: ${{ runner.os }}-python-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-python-
-
-      - name: Configurar ambiente Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
 
       - name: Instalar dependências
         run: |
