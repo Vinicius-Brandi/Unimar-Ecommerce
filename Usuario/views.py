@@ -56,15 +56,19 @@ def solicitar_vendedor(request):
     if request.method == 'GET':
         return render(request, 'solicitar_vendedor.html')
     elif request.method == 'POST':
-        nome_completo = request.POST.get('nome-completo')
-        cpf = request.POST.get('cpf')
-        descricao = request.POST.get('produtos-a-vender')
+        if Solicitacao_Vendedor.objects.filter(usuario=request.user).exists():
+            messages.error(request, ("Você ja mandou solicitação! Aguarde a verificação!"))
+            return redirect('home')
+        else:
+            nome_completo = request.POST.get('nome-completo')
+            cpf = request.POST.get('cpf')
+            descricao = request.POST.get('produtos-a-vender')
 
-        solicitacao = Solicitacao_Vendedor.objects.create(usuario=request.user, nome_completo=nome_completo, cpf=cpf, descricao=descricao)
-        solicitacao.save()
+            solicitacao = Solicitacao_Vendedor.objects.create(usuario=request.user, nome_completo=nome_completo, cpf=cpf, descricao=descricao)
+            solicitacao.save()
 
-        messages.success(request, ("Solicitado com sucesso, aguarde até darmos uma resposta!"))
-        return redirect('home')
+            messages.success(request, ("Solicitado com sucesso, aguarde até darmos uma resposta!"))
+            return redirect('home')
     
 def ver_solicitacao(request):
     solicitacoes = Solicitacao_Vendedor.objects.all()
