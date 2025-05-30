@@ -18,7 +18,7 @@
 
         <div class='form-field'>
             <p>Preço</p>
-            <input class="form-input" type="number" name='preco' step="any" value="{{ produto.preco }}">
+            <input class="form-input" type="number" name='preco' step="any" value="{% localize off %}{{ produto.preco }}{% endlocalize %}">
         </div>
 
         <div class='form-field'>
