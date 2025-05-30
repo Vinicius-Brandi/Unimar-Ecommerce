@@ -14,5 +14,7 @@ urlpatterns = [
     path('perfil/lista_produtos/<int:id_produto>/excluir/', views.excluir_produto, name='excluir_produto'),
     path('perfil/vendas/', views.vendas, name='vendas'),
     path('perfil/vendas/<str:order_id>', views.vendas_details, name='vendas_details'),
-    path('ver_solicitacao', views.ver_solicitacao, name='ver_solicitacao')
+    path('ver_solicitacao', views.ver_solicitacao, name='ver_solicitacao'),
+    path('ver_solicitacao/<str:username>/aceitar', views.aceitar_solicitacao, name='aceitar_solicitacao'),
+    path('ver_solicitacao/<str:username>/recusar', views.recusar_solicitacao, name='recusar_solicitacao')
 ]

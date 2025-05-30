@@ -70,6 +70,25 @@ def ver_solicitacao(request):
     solicitacoes = Solicitacao_Vendedor.objects.all()
     return render(request, 'ver_solicitacao.html', {'solicitacoes':solicitacoes})
 
+def aceitar_solicitacao(request, username):
+    user = User.objects.get(username=username)
+    user.perfil.vendedor = True
+    user.save()
+
+    solicitacao = Solicitacao_Vendedor.objects.get(usuario=user)
+    solicitacao.delete()
+
+    return redirect('ver_solicitacao')
+
+def recusar_solicitacao(request, username):
+    user = User.objects.get(username=username)
+    user.perfil.vendedor = False
+    user.save()
+
+    solicitacao = Solicitacao_Vendedor.objects.get(usuario=user)
+    solicitacao.delete()
+    return redirect('ver_solicitacao')
+
 def perfil(request, username):
     usuario = User.objects.get(username=username)
 
