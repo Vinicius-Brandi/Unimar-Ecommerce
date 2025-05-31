@@ -7,6 +7,8 @@ from Store.models import Produto, Order, Solicitacao_Vendedor
 from django.core.files.storage import FileSystemStorage
 import os
 from django.http import Http404
+import requests
+from django.urls import reverse
 
 def cadastrar(request):
     if request.method == "GET":
@@ -233,3 +235,68 @@ def vendas_details(request, order_id):
 
     itemOrders = order.itens.all()
     return render(request, 'vendas_details.html', {'itemOrders': itemOrders})
+
+def conectar_mercado_pago(request):
+    """
+    Redireciona o vendedor para a tela de autorização do Mercado Pago.
+    """
+    # Substitua pelo seu APP_ID real
+    APP_ID = os.getenv("MP_APP_ID") 
+    
+    # A URL para a qual o Mercado Pago irá redirecionar o usuário após a autorização
+    redirect_uri = request.build_absolute_uri(reverse('mp_callback'))
+
+    # Link de autorização
+    auth_url = (
+        f"https://auth.mercadopago.com.br/authorization"
+        f"?client_id={APP_ID}"
+        f"&response_type=code"
+        f"&platform_id=mp"
+        f"&state={request.user.id}" # Enviamos o ID do usuário para saber quem está conectando
+        f"&redirect_uri={redirect_uri}"
+    )
+    return redirect(auth_url)
+
+def mercado_pago_callback(request):
+    """
+    View que recebe o callback do Mercado Pago com o código de autorização.
+    """
+    code = request.GET.get('code')
+    user_id = request.GET.get('state') # Recupera o ID do usuário que passamos
+
+    if not code:
+        messages.error(request, "A autorização falhou. Tente novamente.")
+        return redirect('perfil_user', username=request.user.username)
+
+    # Troca o código de autorização por um access token
+    token_url = "https://api.mercadopago.com/oauth/token"
+    payload = {
+        "client_secret": os.getenv("MP_ACCESS_TOKEN"), # Use seu Access Token principal aqui (Client Secret)
+        "client_id": os.getenv("MP_APP_ID"),
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": request.build_absolute_uri(reverse('mp_callback'))
+    }
+    
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+
+    response = requests.post(token_url, data=payload, headers=headers)
+    
+    if response.status_code == 200:
+        data = response.json()
+        user = User.objects.get(id=user_id)
+        
+        # Salva as credenciais no perfil do vendedor
+        user.perfil.mp_access_token = data.get('access_token')
+        user.perfil.mp_refresh_token = data.get('refresh_token')
+        user.perfil.mp_user_id = data.get('user_id')
+        user.perfil.mp_connected = True
+        user.perfil.save()
+        
+        messages.success(request, "Sua conta Mercado Pago foi conectada com sucesso!")
+    else:
+        messages.error(request, f"Erro ao conectar sua conta: {response.json().get('message')}")
+        
+    return redirect('perfil_user', username=user.username)

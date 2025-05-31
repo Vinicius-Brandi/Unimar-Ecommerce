@@ -13,6 +13,7 @@ from apimercadopago import realizar_pagamento
 from dotenv import load_dotenv
 import os
 import mercadopago
+from decimal import Decimal
 
 def home(request):
     produtos = Produto.objects.all()
@@ -82,49 +83,78 @@ def excluir_carrinho(request, id_produto):
 
 def pagamento(request):
     carrinho = Carrinho.objects.filter(usuario=request.user).first()
+    if not carrinho or not carrinho.itens.exists():
+        messages.error(request, "Seu carrinho está vazio.")
+        return redirect('carrinho')
+        
+    # Defina a porcentagem da sua comissão (ex: 10%)
+    MARKETPLACE_FEE_PERCENTAGE = Decimal('0.10')
 
     itens_por_vendedor = defaultdict(list)
     for item in carrinho.itens.all():
+        # Verificação importante: o vendedor conectou a conta?
+        if not item.produto.vendedor.perfil.mp_connected:
+            messages.error(request, f"O vendedor do produto '{item.produto.nome}' ainda não configurou uma forma de recebimento. O item foi removido do seu carrinho.")
+            item.delete() # Remove o item problemático
+            return redirect('carrinho')
         itens_por_vendedor[item.produto.vendedor].append(item)
 
     payment_items = []
-    total_geral = 0
     pedidos_criados = []
+    total_comissao = Decimal('0.00')
 
     for vendedor, itens in itens_por_vendedor.items():
+        subtotal_vendedor = Decimal('0.00')
         order = Order.objects.create(
             vendedor=vendedor,
             comprador=request.user
         )
 
         for item in itens:
-            item_order = ItemOrder.objects.create(
+            ItemOrder.objects.create(
                 order=order,
                 produto=item.produto,
                 quantidade=item.quantidade,
                 preco=item.produto.preco
             )
-
-            total_geral = item.quantidade * item.produto.preco
+            
+            preco_item = Decimal(str(item.produto.preco))
+            subtotal_item = item.quantidade * preco_item
+            subtotal_vendedor += subtotal_item
 
             payment_items.append({
                 "id": str(item.produto.id),
                 "title": item.produto.nome,
                 "quantity": item.quantidade,
                 "currency_id": "BRL",
-                "unit_price": float(item.produto.preco)
+                "unit_price": float(preco_item)
             })
 
-        order.valor_total_pedido = total_geral  # Atualizando o valor total do pedido
+        # Atualiza o valor total do pedido
+        order.valor_total_pedido = subtotal_vendedor
         order.save()
         pedidos_criados.append(order)
+
+        # Calcula a comissão para os itens deste vendedor e adiciona ao total
+        total_comissao += subtotal_vendedor * MARKETPLACE_FEE_PERCENTAGE
+
+    # Garante que a comissão tenha no máximo 2 casas decimais
+    total_comissao = round(total_comissao, 2)
+
+    if not payment_items:
+        messages.error(request, "Não foi possível processar os itens do carrinho.")
+        return redirect('carrinho')
 
     pedido_ids = [str(pedido.id) for pedido in pedidos_criados]
     external_reference = ",".join(pedido_ids)
 
-    link_pagamento = realizar_pagamento(payment_items, external_reference)
+    # Passa a lista de itens, a referência e a comissão calculada
+    link_pagamento = realizar_pagamento(payment_items, external_reference, total_comissao)
+    
     request.session['pedidos_ids'] = pedido_ids
 
+    # Limpa o carrinho após gerar o link de pagamento
+    carrinho.delete()
 
     return redirect(link_pagamento)
 

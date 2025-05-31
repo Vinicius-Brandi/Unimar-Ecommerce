@@ -16,5 +16,7 @@ urlpatterns = [
     path('perfil/vendas/<str:order_id>', views.vendas_details, name='vendas_details'),
     path('ver_solicitacao', views.ver_solicitacao, name='ver_solicitacao'),
     path('ver_solicitacao/<str:username>/aceitar', views.aceitar_solicitacao, name='aceitar_solicitacao'),
-    path('ver_solicitacao/<str:username>/recusar', views.recusar_solicitacao, name='recusar_solicitacao')
+    path('ver_solicitacao/<str:username>/recusar', views.recusar_solicitacao, name='recusar_solicitacao'),
+    path('conectar-mp/', views.conectar_mercado_pago, name='conectar_mp'),
+    path('mp/callback/', views.mercado_pago_callback, name='mp_callback'),
 ]
