@@ -9,6 +9,7 @@ import os
 from django.http import Http404
 import requests
 from django.urls import reverse
+from django.contrib.admin.views.decorators import staff_member_required
 
 def cadastrar(request):
     if request.method == "GET":
@@ -71,25 +72,29 @@ def solicitar_vendedor(request):
 
             messages.success(request, ("Solicitado com sucesso, aguarde até darmos uma resposta!"))
             return redirect('home')
-    
+
+@staff_member_required
 def ver_solicitacao(request):
     solicitacoes = Solicitacao_Vendedor.objects.all()
     return render(request, 'ver_solicitacao.html', {'solicitacoes':solicitacoes})
 
+@staff_member_required
 def aceitar_solicitacao(request, username):
+    user = get_object_or_404(User, username=username) 
     user = User.objects.get(username=username)
     user.perfil.vendedor = True
-    user.save()
+    user.perfil.save()
 
     solicitacao = Solicitacao_Vendedor.objects.get(usuario=user)
     solicitacao.delete()
 
     return redirect('ver_solicitacao')
 
+@staff_member_required
 def recusar_solicitacao(request, username):
     user = User.objects.get(username=username)
     user.perfil.vendedor = False
-    user.save()
+    user.perfil.save()
 
     solicitacao = Solicitacao_Vendedor.objects.get(usuario=user)
     solicitacao.delete()
@@ -150,7 +155,7 @@ def editar_perfil(request, username):
             return redirect('home')
     
 def lista_produtos(request, username):
-    usuario = User.objects.get(username=username)
+    usuario = get_object_or_404(User, username=username)
 
     if request.user.username == username:
         return render(request, 'lista_produtos.html', {'usuario':usuario, 'usuariousername':username})
