@@ -3,6 +3,7 @@ from .models import Produto
 from .models import Produto, Categoria, Carrinho, ItemCarrinho, Order, ItemOrder
 from django.shortcuts import get_object_or_404
 from django.contrib import messages
+from django.contrib.auth.models import User
 
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
@@ -34,11 +35,36 @@ def produto(request, id_produto):
             return redirect('logar')
 
 def carrinho(request):
-    if request.user.is_authenticated:
-        return render(request, 'carrinho.html', {'usuario':request.user})
-    else:
+    if not request.user.is_authenticated:
         messages.error(request, ("Você deve estar logado para acessar o carrinho"))
         return redirect('logar')
+
+    try:
+        carrinho_usuario = request.user.carrinho
+        itens_do_carrinho = carrinho_usuario.itens.all()
+    except Carrinho.DoesNotExist:
+        itens_do_carrinho = []
+
+    # Se o carrinho estiver vazio
+    if not itens_do_carrinho:
+        return render(request, 'carrinho.html', {'itens_por_vendedor': {}})
+
+    # Agrupando itens e calculando subtotais por vendedor
+    itens_por_vendedor = defaultdict(lambda: {'itens': [], 'subtotal': Decimal('0.00')})
+    for item in itens_do_carrinho:
+        vendedor = item.produto.vendedor
+        subtotal_item = item.subtotal() # Usando o método subtotal do modelo ItemCarrinho
+        
+        itens_por_vendedor[vendedor]['itens'].append(item)
+        itens_por_vendedor[vendedor]['subtotal'] += subtotal_item
+
+    contexto = {
+        'usuario': request.user,
+        'itens_por_vendedor': dict(itens_por_vendedor), # Convertendo para dict normal
+        'total_carrinho': carrinho_usuario.total()
+    }
+    
+    return render(request, 'carrinho.html', contexto)
     
 def adicionar_carrinho(request, id_produto, quantidade):
     produto = Produto.objects.get(id=id_produto)
@@ -81,80 +107,57 @@ def excluir_carrinho(request, id_produto):
         item.delete()
     return redirect('carrinho')
 
-def pagamento(request):
-    carrinho = Carrinho.objects.filter(usuario=request.user).first()
-    if not carrinho or not carrinho.itens.exists():
-        messages.error(request, "Seu carrinho está vazio.")
-        return redirect('carrinho')
-        
-    # Defina a porcentagem da sua comissão (ex: 10%)
-    MARKETPLACE_FEE_PERCENTAGE = Decimal('0.10')
-
-    itens_por_vendedor = defaultdict(list)
-    for item in carrinho.itens.all():
-        # Verificação importante: o vendedor conectou a conta?
-        if not item.produto.vendedor.perfil.mp_connected:
-            messages.error(request, f"O vendedor do produto '{item.produto.nome}' ainda não configurou uma forma de recebimento. O item foi removido do seu carrinho.")
-            item.delete() # Remove o item problemático
-            return redirect('carrinho')
-        itens_por_vendedor[item.produto.vendedor].append(item)
-
-    payment_items = []
-    pedidos_criados = []
-    total_comissao = Decimal('0.00')
-
-    for vendedor, itens in itens_por_vendedor.items():
-        subtotal_vendedor = Decimal('0.00')
-        order = Order.objects.create(
-            vendedor=vendedor,
-            comprador=request.user
-        )
-
-        for item in itens:
-            ItemOrder.objects.create(
-                order=order,
-                produto=item.produto,
-                quantidade=item.quantidade,
-                preco=item.produto.preco
-            )
-            
-            preco_item = Decimal(str(item.produto.preco))
-            subtotal_item = item.quantidade * preco_item
-            subtotal_vendedor += subtotal_item
-
-            payment_items.append({
-                "id": str(item.produto.id),
-                "title": item.produto.nome,
-                "quantity": item.quantidade,
-                "currency_id": "BRL",
-                "unit_price": float(preco_item)
-            })
-
-        # Atualiza o valor total do pedido
-        order.valor_total_pedido = subtotal_vendedor
-        order.save()
-        pedidos_criados.append(order)
-
-        # Calcula a comissão para os itens deste vendedor e adiciona ao total
-        total_comissao += subtotal_vendedor * MARKETPLACE_FEE_PERCENTAGE
-
-    # Garante que a comissão tenha no máximo 2 casas decimais
-    total_comissao = round(total_comissao, 2)
-
-    if not payment_items:
-        messages.error(request, "Não foi possível processar os itens do carrinho.")
-        return redirect('carrinho')
-
-    pedido_ids = [str(pedido.id) for pedido in pedidos_criados]
-    external_reference = ",".join(pedido_ids)
-
-    # Passa a lista de itens, a referência e a comissão calculada
-    link_pagamento = realizar_pagamento(payment_items, external_reference, total_comissao)
+def pagamento(request, vendedor_id):
+    vendedor = get_object_or_404(User, id=vendedor_id)
+    carrinho = get_object_or_404(Carrinho, usuario=request.user)
     
-    request.session['pedidos_ids'] = pedido_ids
+    itens_para_pagar = carrinho.itens.filter(produto__vendedor=vendedor)
 
-    # Limpa o carrinho após gerar o link de pagamento
-    carrinho.delete()
+    if not itens_para_pagar.exists():
+        messages.error(request, "Itens não encontrados no carrinho para este vendedor.")
+        return redirect('carrinho')
+
+    # Verificação se o vendedor conectou a conta
+    if not vendedor.perfil.mp_connected:
+        messages.error(request, f"O vendedor '{vendedor.first_name}' não pode receber pagamentos no momento.")
+        return redirect('carrinho')
+
+    MARKETPLACE_FEE_PERCENTAGE = Decimal('0.10')
+    payment_items = []
+    subtotal_vendedor = Decimal('0.00')
+
+    # Cria a Ordem para este pagamento específico
+    order = Order.objects.create(vendedor=vendedor, comprador=request.user)
+
+    for item in itens_para_pagar:
+        preco_item = Decimal(str(item.produto.preco))
+        subtotal_item = item.quantidade * preco_item
+        subtotal_vendedor += subtotal_item
+
+        ItemOrder.objects.create(
+            order=order,
+            produto=item.produto,
+            quantidade=item.quantidade,
+            preco=preco_item
+        )
+        payment_items.append({
+            "id": str(item.produto.id),
+            "title": item.produto.nome,
+            "quantity": item.quantidade,
+            "currency_id": "BRL",
+            "unit_price": float(preco_item)
+        })
+
+    order.valor_total_pedido = subtotal_vendedor
+    order.save()
+
+    comissao_total = round(subtotal_vendedor * MARKETPLACE_FEE_PERCENTAGE, 2)
+    external_reference = str(order.id)
+
+    link_pagamento = realizar_pagamento(payment_items, external_reference, comissao_total)
+    
+    # APENAS APÓS gerar o link, removemos os itens do carrinho original
+    itens_para_pagar.delete()
 
     return redirect(link_pagamento)
 
