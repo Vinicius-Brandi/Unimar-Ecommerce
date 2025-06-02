@@ -1,4 +1,4 @@
-mport mercadopago
+import mercadopago
 import os
 
 # A função agora recebe o seller_access_token como primeiro argumento
