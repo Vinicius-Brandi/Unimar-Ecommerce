@@ -169,6 +169,11 @@ def pagamento(request, vendedor_id):
     comissao_total = round(subtotal_vendedor * MARKETPLACE_FEE_PERCENTAGE, 2)
     external_reference = str(order.id)
 
+    print("--- DEBUG MERCADO PAGO ---")
+    print(f"Enviando para o Collector ID: {collector_id_numerico} (Tipo: {type(collector_id_numerico)})")
+    print(f"Valor da comissão (application_fee): {comissao_total}")
+    print("--------------------------")
+
     # A chamada agora inclui o collector_id numérico
     try:
         link_pagamento = realizar_pagamento(
