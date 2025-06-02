@@ -7,7 +7,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -120,7 +119,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-MP_PLATFORM_ACCESS_TOKEN = os.getenv("MP_PLATFORM_ACCESS_TOKEN")
+MP_PLATFORM_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
 
 if not MP_PLATFORM_ACCESS_TOKEN:
-    raise Exception("A variável MP_PLATFORM_ACCESS_TOKEN não está definida no .env")
+    raise Exception("A variável MP_ACCESS_TOKEN não está definida no .env")
