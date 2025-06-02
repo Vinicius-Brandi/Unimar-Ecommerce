@@ -114,17 +114,30 @@ def pagamento(request, vendedor_id):
     carrinho = get_object_or_404(Carrinho, usuario=request.user)
     
     # Pega o ID do coletor (vendedor) a partir do seu perfil
-    collector_id = vendedor.perfil.mp_user_id
+    # O nome da variável foi alterado para indicar que pode ser uma string
+    collector_id_do_banco = vendedor.perfil.mp_user_id
 
     # Verificação crucial: O vendedor tem um collector_id configurado?
-    if not collector_id:
+    if not collector_id_do_banco:
         messages.error(request, f"O vendedor '{vendedor.first_name}' não está configurado corretamente para receber pagamentos.")
+        return redirect('carrinho')
+
+    # ✅ CORREÇÃO APLICADA: Converte o ID para um número inteiro
+    try:
+        collector_id_numerico = int(collector_id_do_banco)
+    except (ValueError, TypeError):
+        # Este erro acontece se o ID salvo no banco não for um número (ex: 'abc')
+        messages.error(request, f"O ID de pagamento do vendedor '{vendedor.first_name}' é inválido.")
         return redirect('carrinho')
 
     # ... (toda a sua lógica para montar os itens e a ordem permanece a mesma) ...
     
     itens_para_pagar = carrinho.itens.filter(produto__vendedor=vendedor)
-    # ... (código para criar a order, os payment_items, etc.) ...
+    
+    if not itens_para_pagar.exists():
+        messages.error(request, "Não há itens deste vendedor no seu carrinho.")
+        return redirect('carrinho')
+        
     MARKETPLACE_FEE_PERCENTAGE = Decimal('0.10')
     payment_items = []
     subtotal_vendedor = Decimal('0.00')
@@ -156,10 +169,10 @@ def pagamento(request, vendedor_id):
     comissao_total = round(subtotal_vendedor * MARKETPLACE_FEE_PERCENTAGE, 2)
     external_reference = str(order.id)
 
-    # ✅ A CHAMADA AGORA INCLUI O collector_id
+    # A chamada agora inclui o collector_id numérico
     try:
         link_pagamento = realizar_pagamento(
-            collector_id,  # Passando o ID do vendedor
+            collector_id_numerico,  # ✅ Passando o ID do vendedor já como número
             payment_items, 
             external_reference, 
             comissao_total
