@@ -112,7 +112,7 @@ def pagamento(request, vendedor_id):
     carrinho = get_object_or_404(Carrinho, usuario=request.user)
     
     # Pega o token de acesso do vendedor a partir do seu perfil
-    seller_token = vendedor.perfil.mp_access_token
+    seller_token = vendedor.perfil.mp_user_id
 
     # Verificação crucial: O vendedor tem um token válido?
     if not seller_token:
