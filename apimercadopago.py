@@ -15,7 +15,7 @@ def realizar_pagamento(collector_id, items, external_reference, application_fee)
 
     preference_data = {
         # ✅ NOVO PARÂMETRO: Indica para quem vai o dinheiro
-        "collector_id": collector_id, 
+        "collector_id": 554466433, 
         
         "items": items,
         "back_urls": {
