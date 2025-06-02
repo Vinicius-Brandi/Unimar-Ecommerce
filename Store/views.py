@@ -190,71 +190,64 @@ def pagamento(request, vendedor_id):
         seller_token, payment_items, external_reference, comissao_total
     )
 
-    itens_para_pagar.delete()
-
     return redirect(link_pagamento)
 
 
 @csrf_exempt
 def mercadopago_webhook(request):
-    load_dotenv()
-    if request.method == "POST":
-        data = json.loads(request.body)
-        payment_id = data.get("data", {}).get("id")
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "Método não permitido"}, status=405)
 
-        if not payment_id:
-            return JsonResponse(
-                {"status": "error", "message": "ID de pagamento não encontrado"},
-                status=400,
-            )
+    data = json.loads(request.body)
+    
+    if data.get("type") != "payment":
+        return JsonResponse({"status": "ok", "message": "Não é um evento de pagamento"})
 
-        sdk = mercadopago.SDK(f'{os.getenv("MP_ACCESS_TOKEN")}')
-        payment_response = sdk.payment().get(payment_id)
-        response_data = payment_response["response"]
+    payment_id = data.get("data", {}).get("id")
+    if not payment_id:
+        return JsonResponse({"status": "error", "message": "ID de pagamento não encontrado"}, status=400)
 
+    try:
+        sdk = mercadopago.SDK(os.getenv("MP_ACCESS_TOKEN"))
+        payment_info = sdk.payment().get(payment_id)
+        
+        if payment_info["status"] != 200:
+            return JsonResponse({"status": "error", "message": "Pagamento não encontrado no Mercado Pago"}, status=404)
+
+        response_data = payment_info["response"]
         payment_status = response_data.get("status")
         external_reference = response_data.get("external_reference")
 
         if not external_reference:
-            return JsonResponse(
-                {"status": "error", "message": "Referência externa não encontrada"},
-                status=400,
-            )
+            return JsonResponse({"status": "error", "message": "Referência externa não encontrada"}, status=400)
 
-        pedido_ids = external_reference.split(",")
-        pedidos = Order.objects.filter(id__in=pedido_ids)
+        pedido = Order.objects.get(id=external_reference)
 
-        for pedido in pedidos:
-            pedido.status_pagamento = (
-                payment_status
-            )
+        if payment_status == "approved" and pedido.status_pagamento != "approved":
+            
+            pedido.status_pagamento = "approved"
             pedido.save()
 
-            if payment_status == "approved":
-                for pedido_id in pedido_ids:
-                    try:
-                        pedido = Order.objects.get(id=pedido_id)
+            for item_pedido in pedido.itens.all():
+                produto = item_pedido.produto
+                if produto.quantidade >= item_pedido.quantidade:
+                    produto.quantidade -= item_pedido.quantidade
+                    produto.save()
+                else:
+                    print(f"Alerta: Estoque insuficiente para o produto {produto.id} no pedido {pedido.id}")
+            
+            carrinho_usuario = pedido.comprador.carrinho
+            ids_produtos_no_pedido = [item.produto.id for item in pedido.itens.all()]
+            ItemCarrinho.objects.filter(carrinho=carrinho_usuario, produto_id__in=ids_produtos_no_pedido).delete()
 
-                        if pedido.status_pagamento != "approved":
-                            pedido.status_pagamento = "approved"
-                            pedido.save()
+        elif pedido.status_pagamento != payment_status:
+             pedido.status_pagamento = payment_status
+             pedido.save()
 
-                            for item in pedido.itens.all():
-                                item.produto.quantidade -= item.quantidade
-                                item.produto.save()
-                    except:
-                        print("boa")
+    except Order.DoesNotExist:
+        return JsonResponse({"status": "error", "message": f"Pedido com ID {external_reference} não encontrado"}, status=404)
+    except Exception as e:
+        print(f"Erro inesperado no webhook: {e}")
+        return JsonResponse({"status": "error", "message": "Erro interno do servidor"}, status=500)
 
-        return JsonResponse({"status": "ok"})
-
-
-def compra_success(request):
-    return render(request, "compra_success.html", {})
-
-
-def compra_failure(request):
-    return render(request, "compra_failure.html", {})
-
-
-def compra_pending(request):
-    return render(request, "compra_pending.html", {})
+    return JsonResponse({"status": "ok"})
