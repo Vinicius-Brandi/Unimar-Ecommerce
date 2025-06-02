@@ -18,6 +18,20 @@
             <img src="{% static 'assets/unimar-banner.webp' %}">
         </div>
 
+        <div class="container-category">
+            <nav class="navbar-category">
+                <div class="category-menu">
+                    <p>Comidas</p>
+                    <div class="category-menu-dropdown">
+                        <a href="{% url "perfil_user" request.user.username %}">Salgados</a>
+                        <a href="{% url "perfil_user" request.user.username %}">Doces</a>
+                    </div>
+                </div>
+
+                <a href="{% url "perfil_user" request.user.username %}">Serviços</a>
+            </nav>
+        </div>
+
         <div class="products-showcase">
             {% for produto in produtos %}
                 {% if produto.quantidade > 0 %}
