@@ -103,6 +103,11 @@ def recusar_solicitacao(request, username):
 def perfil(request, username):
     usuario = User.objects.get(username=username)
 
+    try:
+        print(f"--- DEBUG PERFIL: Carregando perfil para {usuario.username}. Valor de mp_connected no BD é: {usuario.perfil.mp_connected} ---")
+    except Exception as e:
+        print(f"--- DEBUG PERFIL: Erro ao ler o perfil: {e}")
+
     return render(request, 'perfil_usuario.html', {'usuario':usuario})
 
 def editar_perfil(request, username):
@@ -309,6 +314,8 @@ def mercado_pago_callback(request):
         user.perfil.mp_user_id = data.get('user_id')
         user.perfil.mp_connected = True
         user.perfil.save()
+
+        print(f"--- DEBUG CALLBACK: Salvando perfil para {user.username}. mp_connected AGORA É: {user.perfil.mp_connected} ---")
         
         messages.success(request, "Sua conta Mercado Pago foi conectada com sucesso!")
         # PASSO 2: Redirecionamento de SUCESSO
