@@ -267,16 +267,24 @@ def mercado_pago_callback(request):
     View que recebe o callback do Mercado Pago com o código de autorização.
     """
     code = request.GET.get('code')
-    user_id = request.GET.get('state') # Recupera o ID do usuário que passamos
+    user_id = request.GET.get('state')
+
+    # PASSO 1: Buscamos o usuário no início da função.
+    # Isso garante que a variável 'user' sempre exista.
+    try:
+        user = User.objects.get(id=user_id)
+    except (User.DoesNotExist, ValueError):
+        messages.error(request, "Usuário inválido durante a autenticação.")
+        return redirect('home')
 
     if not code:
         messages.error(request, "A autorização falhou. Tente novamente.")
-        return redirect('perfil_user', username=request.user.username)
+        return redirect('perfil_user', username=user.username)
 
     # Troca o código de autorização por um access token
     token_url = "https://api.mercadopago.com/oauth/token"
     payload = {
-        "client_secret": os.getenv("MP_ACCESS_TOKEN"), # Use seu Access Token principal aqui (Client Secret)
+        "client_secret": os.getenv("MP_CLIENT_SECRET"), # Usando a variável correta
         "client_id": os.getenv("MP_APP_ID"),
         "grant_type": "authorization_code",
         "code": code,
@@ -291,8 +299,10 @@ def mercado_pago_callback(request):
     
     if response.status_code == 200:
         data = response.json()
-        user = User.objects.get(id=user_id)
         
+        # (Opcional, mas recomendado) Adicionar a verificação de tipo de conta que discutimos
+        # ...
+
         # Salva as credenciais no perfil do vendedor
         user.perfil.mp_access_token = data.get('access_token')
         user.perfil.mp_refresh_token = data.get('refresh_token')
@@ -301,7 +311,13 @@ def mercado_pago_callback(request):
         user.perfil.save()
         
         messages.success(request, "Sua conta Mercado Pago foi conectada com sucesso!")
+        # PASSO 2: Redirecionamento de SUCESSO
+        return redirect('perfil_user', username=user.username)
     else:
-        messages.error(request, f"Erro ao conectar sua conta: {response.json().get('message')}")
-        
-    return redirect('perfil_user', username=user.username)
+        # Se a resposta deu erro, mostra a mensagem e redireciona
+        error_message = response.json().get('message', 'Erro desconhecido')
+        messages.error(request, f"Erro ao conectar sua conta: {error_message}")
+        # PASSO 3: Redirecionamento de ERRO
+        return redirect('perfil_user', username=user.username)
+
+    # A linha 'return redirect(...)' que ficava aqui no final foi removida.
