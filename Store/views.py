@@ -114,7 +114,7 @@ def pagamento(request, vendedor_id):
     carrinho = get_object_or_404(Carrinho, usuario=request.user)
     
     # Pega o ID do coletor (vendedor) a partir do seu perfil
-    collector_id = vendedor.perfil.mp_collector_id
+    collector_id = vendedor.perfil.mp_user_id
 
     # Verificação crucial: O vendedor tem um collector_id configurado?
     if not collector_id:
