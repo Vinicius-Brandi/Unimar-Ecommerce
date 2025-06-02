@@ -250,11 +250,18 @@ def conectar_mercado_pago(request):
     """
     Redireciona o vendedor para a tela de autorização do Mercado Pago.
     """
-    # Substitua pelo seu APP_ID real
-    APP_ID = os.getenv("MP_APP_ID") 
+    # Garante que o usuário esteja logado antes de prosseguir
+    if not request.user.is_authenticated:
+        messages.error(request, "Você precisa estar logado para realizar esta ação.")
+        return redirect('logar')
+
+    APP_ID = os.getenv("MP_APP_ID")
     
     # A URL para a qual o Mercado Pago irá redirecionar o usuário após a autorização
     redirect_uri = request.build_absolute_uri(reverse('mp_callback'))
+
+    # ADICIONAMOS O PRINT AQUI
+    print(f"--- DEBUG: A URL de redirecionamento gerada para o Mercado Pago é: {redirect_uri}")
 
     # Link de autorização
     auth_url = (
@@ -262,9 +269,10 @@ def conectar_mercado_pago(request):
         f"?client_id={APP_ID}"
         f"&response_type=code"
         f"&platform_id=mp"
-        f"&state={request.user.id}" # Enviamos o ID do usuário para saber quem está conectando
+        f"&state={request.user.id}"
         f"&redirect_uri={redirect_uri}"
     )
+    
     return redirect(auth_url)
 
 def mercado_pago_callback(request):
