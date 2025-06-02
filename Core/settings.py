@@ -119,3 +119,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+MP_PLATFORM_ACCESS_TOKEN = os.getenv("MP_PLATFORM_ACCESS_TOKEN")
+
+if not MP_PLATFORM_ACCESS_TOKEN:
+    raise Exception("A variável MP_PLATFORM_ACCESS_TOKEN não está definida no .env")

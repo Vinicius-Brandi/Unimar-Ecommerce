@@ -10,6 +10,8 @@ from django.http import JsonResponse
 import json
 from collections import defaultdict
 
+from django.conf import settings
+
 from apimercadopago import realizar_pagamento
 from dotenv import load_dotenv
 import os
@@ -108,7 +110,6 @@ def excluir_carrinho(request, id_produto):
     return redirect('carrinho')
 
 def pagamento(request, vendedor_id):
-    from django.conf import settings  # Para pegar seu token da plataforma
     
     vendedor = get_object_or_404(User, id=vendedor_id)
     carrinho = get_object_or_404(Carrinho, usuario=request.user)
