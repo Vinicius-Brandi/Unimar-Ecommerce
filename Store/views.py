@@ -192,7 +192,6 @@ def pagamento(request, vendedor_id):
 
     return redirect(link_pagamento)
 
-
 @csrf_exempt
 def mercadopago_webhook(request):
     if request.method != "POST":
@@ -235,7 +234,7 @@ def mercadopago_webhook(request):
                     produto.save()
                 else:
                     print(f"Alerta: Estoque insuficiente para o produto {produto.id} no pedido {pedido.id}")
-            
+
             carrinho_usuario = pedido.comprador.carrinho
             ids_produtos_no_pedido = [item.produto.id for item in pedido.itens.all()]
             ItemCarrinho.objects.filter(carrinho=carrinho_usuario, produto_id__in=ids_produtos_no_pedido).delete()
@@ -251,3 +250,14 @@ def mercadopago_webhook(request):
         return JsonResponse({"status": "error", "message": "Erro interno do servidor"}, status=500)
 
     return JsonResponse({"status": "ok"})
+
+def compra_success(request):
+    return render(request, "compra_success.html", {})
+
+
+def compra_failure(request):
+    return render(request, "compra_failure.html", {})
+
+
+def compra_pending(request):
+    return render(request, "compra_pending.html", {})
