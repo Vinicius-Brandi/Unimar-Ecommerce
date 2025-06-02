@@ -1,12 +1,14 @@
-name: Pipeline Unimar-Ecommerce
+name: CI/CD do Marketplace Django
 
 on:
   push:
     branches:
       - main
+      - develop
   pull_request:
     branches:
       - main
+      - develop
 
 jobs:
   build-and-test:
@@ -27,18 +29,30 @@ jobs:
           path: ~/.cache/pip
           key: ${{ runner.os }}-python-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
-            ${{ runner.os }}-python-
+             ${{ runner.os }}-python-
 
-      - name: Instalar dependências
+      - name: Instalar dependências e ferramentas
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          # Instalar as ferramentas de segurança e linting adicionais
+          pip install black flake8 bandit djhtml coverage pip-audit
 
-      - name: Formatar o codigo
+      - name: Formatar o código com Black
         run: black --check .
 
-      - name: Conferir as normas do codigo
+      - name: Conferir as normas do código com Flake8
         run: flake8 .
+
+      - name: Análise de Segurança Estática
+        run: bandit -r bandit_report.txt -f json .
+        continue-on-error: true 
+
+      - name: Auditar Dependências com pip-audit
+        run: pip-audit
+
+      - name: Lint de Templates Django com djhtml
+        run: djhtml --check .
 
       - name: Checar migrations pendentes
         run: python manage.py makemigrations --check --dry-run
@@ -55,4 +69,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cobertura-html
-          path: htmlcov
+          path: htmlcov/
