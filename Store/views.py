@@ -113,31 +113,20 @@ def pagamento(request, vendedor_id):
     vendedor = get_object_or_404(User, id=vendedor_id)
     carrinho = get_object_or_404(Carrinho, usuario=request.user)
     
-    # Pega o ID do coletor (vendedor) a partir do seu perfil
-    # O nome da variável foi alterado para indicar que pode ser uma string
-    collector_id_do_banco = vendedor.perfil.mp_user_id
+    # Pega o token de acesso do vendedor a partir do seu perfil
+    seller_token = vendedor.perfil.mp_access_token
 
-    # Verificação crucial: O vendedor tem um collector_id configurado?
-    if not collector_id_do_banco:
-        messages.error(request, f"O vendedor '{vendedor.first_name}' não está configurado corretamente para receber pagamentos.")
+    # Verificação crucial: O vendedor tem um token válido?
+    if not seller_token:
+        messages.error(request, f"O vendedor '{vendedor.first_name}' não está configurado para receber pagamentos.")
         return redirect('carrinho')
 
-    # ✅ CORREÇÃO APLICADA: Converte o ID para um número inteiro
-    try:
-        collector_id_numerico = int(collector_id_do_banco)
-    except (ValueError, TypeError):
-        # Este erro acontece se o ID salvo no banco não for um número (ex: 'abc')
-        messages.error(request, f"O ID de pagamento do vendedor '{vendedor.first_name}' é inválido.")
-        return redirect('carrinho')
-
-    # ... (toda a sua lógica para montar os itens e a ordem permanece a mesma) ...
-    
     itens_para_pagar = carrinho.itens.filter(produto__vendedor=vendedor)
-    
+
     if not itens_para_pagar.exists():
-        messages.error(request, "Não há itens deste vendedor no seu carrinho.")
+        messages.error(request, "Itens não encontrados no carrinho para este vendedor.")
         return redirect('carrinho')
-        
+
     MARKETPLACE_FEE_PERCENTAGE = Decimal('0.10')
     payment_items = []
     subtotal_vendedor = Decimal('0.00')
@@ -165,26 +154,17 @@ def pagamento(request, vendedor_id):
 
     order.valor_total_pedido = subtotal_vendedor
     order.save()
-    
+
     comissao_total = round(subtotal_vendedor * MARKETPLACE_FEE_PERCENTAGE, 2)
     external_reference = str(order.id)
 
-    print("--- DEBUG MERCADO PAGO ---")
-    print(f"Enviando para o Collector ID: {collector_id_numerico} (Tipo: {type(collector_id_numerico)})")
-    print(f"Valor da comissão (application_fee): {comissao_total}")
-    print("--------------------------")
-
-    # A chamada agora inclui o collector_id numérico
-    try:
-        link_pagamento = realizar_pagamento(
-            collector_id_numerico,  # ✅ Passando o ID do vendedor já como número
-            payment_items, 
-            external_reference, 
-            comissao_total
-        )
-    except Exception as e:
-        messages.error(request, f"Erro ao gerar o pagamento: {e}")
-        return redirect('carrinho')
+    # A chamada agora passa o token do vendedor como o primeiro argumento
+    link_pagamento = realizar_pagamento(
+        seller_token, 
+        payment_items, 
+        external_reference, 
+        comissao_total
+    )
     
     itens_para_pagar.delete()
 
