@@ -113,20 +113,18 @@ def pagamento(request, vendedor_id):
     vendedor = get_object_or_404(User, id=vendedor_id)
     carrinho = get_object_or_404(Carrinho, usuario=request.user)
     
-    # Pega o token de acesso do vendedor a partir do seu perfil
-    seller_token = vendedor.perfil.mp_access_token
+    # Pega o ID do coletor (vendedor) a partir do seu perfil
+    collector_id = vendedor.perfil.mp_collector_id
 
-    # Verificação crucial: O vendedor tem um token válido?
-    if not seller_token:
-        messages.error(request, f"O vendedor '{vendedor.first_name}' não está configurado para receber pagamentos.")
+    # Verificação crucial: O vendedor tem um collector_id configurado?
+    if not collector_id:
+        messages.error(request, f"O vendedor '{vendedor.first_name}' não está configurado corretamente para receber pagamentos.")
         return redirect('carrinho')
 
+    # ... (toda a sua lógica para montar os itens e a ordem permanece a mesma) ...
+    
     itens_para_pagar = carrinho.itens.filter(produto__vendedor=vendedor)
-
-    if not itens_para_pagar.exists():
-        messages.error(request, "Itens não encontrados no carrinho para este vendedor.")
-        return redirect('carrinho')
-
+    # ... (código para criar a order, os payment_items, etc.) ...
     MARKETPLACE_FEE_PERCENTAGE = Decimal('0.10')
     payment_items = []
     subtotal_vendedor = Decimal('0.00')
@@ -154,17 +152,21 @@ def pagamento(request, vendedor_id):
 
     order.valor_total_pedido = subtotal_vendedor
     order.save()
-
+    
     comissao_total = round(subtotal_vendedor * MARKETPLACE_FEE_PERCENTAGE, 2)
     external_reference = str(order.id)
 
-    # A chamada agora passa o token do vendedor como o primeiro argumento
-    link_pagamento = realizar_pagamento(
-        seller_token, 
-        payment_items, 
-        external_reference, 
-        comissao_total
-    )
+    # ✅ A CHAMADA AGORA INCLUI O collector_id
+    try:
+        link_pagamento = realizar_pagamento(
+            collector_id,  # Passando o ID do vendedor
+            payment_items, 
+            external_reference, 
+            comissao_total
+        )
+    except Exception as e:
+        messages.error(request, f"Erro ao gerar o pagamento: {e}")
+        return redirect('carrinho')
     
     itens_para_pagar.delete()
 
