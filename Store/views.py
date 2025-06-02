@@ -111,24 +111,22 @@ def pagamento(request, vendedor_id):
     vendedor = get_object_or_404(User, id=vendedor_id)
     carrinho = get_object_or_404(Carrinho, usuario=request.user)
     
-    # Pega o token de acesso do vendedor a partir do seu perfil
-    seller_token = vendedor.perfil.mp_user_id
-
-    # Verificação crucial: O vendedor tem um token válido?
-    if not seller_token:
-        messages.error(request, f"O vendedor '{vendedor.first_name}' não está configurado para receber pagamentos.")
-        return redirect('carrinho')
-
     itens_para_pagar = carrinho.itens.filter(produto__vendedor=vendedor)
 
     if not itens_para_pagar.exists():
         messages.error(request, "Itens não encontrados no carrinho para este vendedor.")
         return redirect('carrinho')
 
+    # Verificação se o vendedor conectou a conta
+    if not vendedor.perfil.mp_connected:
+        messages.error(request, f"O vendedor '{vendedor.first_name}' não pode receber pagamentos no momento.")
+        return redirect('carrinho')
+
     MARKETPLACE_FEE_PERCENTAGE = Decimal('0.10')
     payment_items = []
     subtotal_vendedor = Decimal('0.00')
 
+    # Cria a Ordem para este pagamento específico
     order = Order.objects.create(vendedor=vendedor, comprador=request.user)
 
     for item in itens_para_pagar:
@@ -156,14 +154,9 @@ def pagamento(request, vendedor_id):
     comissao_total = round(subtotal_vendedor * MARKETPLACE_FEE_PERCENTAGE, 2)
     external_reference = str(order.id)
 
-    # A chamada agora passa o token do vendedor como o primeiro argumento
-    link_pagamento = realizar_pagamento(
-        seller_token, 
-        payment_items, 
-        external_reference, 
-        comissao_total
-    )
+    link_pagamento = realizar_pagamento(payment_items, external_reference, comissao_total)
     
+    # APENAS APÓS gerar o link, removemos os itens do carrinho original
     itens_para_pagar.delete()
 
     return redirect(link_pagamento)
