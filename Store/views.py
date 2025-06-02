@@ -119,28 +119,36 @@ def excluir_carrinho(request, id_produto):
 def pagamento(request, vendedor_id):
     vendedor = get_object_or_404(User, id=vendedor_id)
     carrinho = get_object_or_404(Carrinho, usuario=request.user)
-    
+
     # Pegamos o mp_user_id do perfil do vendedor para usar como collector_id
     collector_id_para_mp = vendedor.perfil.mp_user_id
 
     # DEBUG: Para confirmar o valor e tipo do collector_id ANTES de ser usado
-    print(f"--- DEBUG PAGAMENTO (Store/views.py): Para vendedor ID {vendedor_id} ({vendedor.username}), "
-          f"o valor de collector_id_para_mp (vendedor.perfil.mp_user_id) é: "
-          f"'{collector_id_para_mp}' (Tipo: {type(collector_id_para_mp)}) ---")
+    print(
+        f"--- DEBUG PAGAMENTO (Store/views.py): Para vendedor ID {vendedor_id} ({vendedor.username}), "
+        f"o valor de collector_id_para_mp (vendedor.perfil.mp_user_id) é: "
+        f"'{collector_id_para_mp}' (Tipo: {type(collector_id_para_mp)}) ---"
+    )
 
     if not collector_id_para_mp:
-        messages.error(request, f"O vendedor '{vendedor.first_name}' não possui um ID do Mercado Pago configurado.")
-        return redirect('carrinho')
-        
+        messages.error(
+            request,
+            f"O vendedor '{vendedor.first_name}' não possui um ID do Mercado Pago configurado.",
+        )
+        return redirect("carrinho")
+
     if not vendedor.perfil.mp_connected:
-        messages.error(request, f"A conta Mercado Pago do vendedor '{vendedor.first_name}' não está conectada.")
-        return redirect('carrinho')
+        messages.error(
+            request,
+            f"A conta Mercado Pago do vendedor '{vendedor.first_name}' não está conectada.",
+        )
+        return redirect("carrinho")
 
     itens_para_pagar = carrinho.itens.filter(produto__vendedor=vendedor)
 
     if not itens_para_pagar.exists():
         messages.error(request, "Itens não encontrados no carrinho para este vendedor.")
-        return redirect('carrinho')
+        return redirect("carrinho")
 
     MARKETPLACE_FEE_PERCENTAGE = Decimal("0.10")
     payment_items = []
@@ -179,17 +187,14 @@ def pagamento(request, vendedor_id):
     # e comissao_total será o 'fee_amount'
     try:
         link_pagamento = realizar_pagamento(
-            collector_id_para_mp, 
-            payment_items, 
-            external_reference, 
-            comissao_total 
+            collector_id_para_mp, payment_items, external_reference, comissao_total
         )
     except Exception as e:
         messages.error(request, f"Erro ao gerar link de pagamento: {e}")
         # Adicionando um print do erro também no log do servidor para a view
-        print(f"ERRO na view pagamento ao chamar realizar_pagamento: {e}") 
-        return redirect('carrinho')
-    
+        print(f"ERRO na view pagamento ao chamar realizar_pagamento: {e}")
+        return redirect("carrinho")
+
     itens_para_pagar.delete()
 
     return redirect(link_pagamento)
