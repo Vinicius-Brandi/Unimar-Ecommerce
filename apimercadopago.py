@@ -20,7 +20,7 @@ def realizar_pagamento(platform_access_token, seller_user_id, items, external_re
         },
         # IMPORTANTE: identifica o vendedor para receber o valor líquido
         "marketplace": "MeuMarketplace",  # opcional
-        "collector_id": seller_user_id,  # ID do vendedor (não o token!)
+        "collector_id": int(seller_user_id),  # ID do vendedor (não o token!)
     }
 
     preference_response = sdk.preference().create(preference_data)
