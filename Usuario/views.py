@@ -274,8 +274,8 @@ def mercado_pago_callback(request):
     code = request.GET.get('code')
     user_id = request.GET.get('state')
 
-    # PASSO 1: Buscamos o usuário no início da função.
-    # Isso garante que a variável 'user' sempre exista.
+    print(f"--- DEBUG CALLBACK: Início da view. Código recebido: {code}")
+
     try:
         user = User.objects.get(id=user_id)
     except (User.DoesNotExist, ValueError):
@@ -283,48 +283,46 @@ def mercado_pago_callback(request):
         return redirect('home')
 
     if not code:
-        messages.error(request, "A autorização falhou. Tente novamente.")
+        messages.error(request, "A autorização falhou (código não recebido). Tente novamente.")
         return redirect('perfil_user', username=user.username)
 
-    # Troca o código de autorização por um access token
     token_url = "https://api.mercadopago.com/oauth/token"
     payload = {
-        "client_secret": os.getenv("MP_CLIENT_SECRET"), # Usando a variável correta
+        "client_secret": os.getenv("MP_CLIENT_SECRET"),
         "client_id": os.getenv("MP_APP_ID"),
         "grant_type": "authorization_code",
         "code": code,
         "redirect_uri": request.build_absolute_uri(reverse('mp_callback'))
     }
-    
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
+    headers = { "Content-Type": "application/x-www-form-urlencoded" }
 
+    print("--- DEBUG CALLBACK: Enviando requisição para obter o token...")
     response = requests.post(token_url, data=payload, headers=headers)
     
+    # ---- INÍCIO DA NOVA DEPURAÇÃO ----
+    print(f"--- DEBUG CALLBACK: Status Code da Resposta do MP: {response.status_code}")
+    try:
+        print(f"--- DEBUG CALLBACK: Conteúdo da Resposta do MP: {response.json()}")
+    except Exception:
+        print(f"--- DEBUG CALLBACK: Conteúdo Bruto da Resposta do MP: {response.text}")
+    # ---- FIM DA NOVA DEPURAÇÃO ----
+
     if response.status_code == 200:
         data = response.json()
-        
-        # (Opcional, mas recomendado) Adicionar a verificação de tipo de conta que discutimos
-        # ...
-
-        # Salva as credenciais no perfil do vendedor
         user.perfil.mp_access_token = data.get('access_token')
         user.perfil.mp_refresh_token = data.get('refresh_token')
         user.perfil.mp_user_id = data.get('user_id')
         user.perfil.mp_connected = True
         user.perfil.save()
-
-        print(f"--- DEBUG CALLBACK: Salvando perfil para {user.username}. mp_connected AGORA É: {user.perfil.mp_connected} ---")
-        
+        print(f"--- DEBUG CALLBACK: SUCESSO! Perfil de {user.username} salvo com mp_connected=True.")
         messages.success(request, "Sua conta Mercado Pago foi conectada com sucesso!")
-        # PASSO 2: Redirecionamento de SUCESSO
         return redirect('perfil_user', username=user.username)
     else:
-        # Se a resposta deu erro, mostra a mensagem e redireciona
-        error_message = response.json().get('message', 'Erro desconhecido')
-        messages.error(request, f"Erro ao conectar sua conta: {error_message}")
-        # PASSO 3: Redirecionamento de ERRO
+        error_message = "Erro desconhecido na resposta do Mercado Pago."
+        try:
+            error_message = response.json().get('message', error_message)
+        except Exception:
+            pass
+        messages.error(request, f"Não foi possível finalizar a conexão: {error_message}")
+        print(f"--- DEBUG CALLBACK: FALHA! Redirecionando para o perfil de {user.username}.")
         return redirect('perfil_user', username=user.username)
-
-    # A linha 'return redirect(...)' que ficava aqui no final foi removida.
