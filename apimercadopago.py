@@ -1,7 +1,6 @@
 import mercadopago
 
-def realizar_pagamento(platform_access_token, seller_user_id, items, external_reference, application_fee):
-    # Use o token da sua plataforma (não do vendedor)
+def realizar_pagamento(platform_access_token, items, external_reference, application_fee):
     sdk = mercadopago.SDK(platform_access_token)
 
     preference_data = {
@@ -14,13 +13,10 @@ def realizar_pagamento(platform_access_token, seller_user_id, items, external_re
         "auto_return": "all",
         "notification_url": "https://unimarprojects.pythonanywhere.com/webhook/mercadopago/",
         "external_reference": external_reference,
-        "application_fee": float(application_fee),  # Sua comissão
-        "payer": {
-            # você pode adicionar o e-mail ou info do comprador se quiser
-        },
-        # IMPORTANTE: identifica o vendedor para receber o valor líquido
-        "marketplace": "MeuMarketplace",  # opcional
-        "collector_id": 554466433,  # ID do vendedor (não o token!)
+        "application_fee": float(application_fee),
+        "payer": {},
+        "marketplace": "MeuMarketplace",
+        # "collector_id": 554466433,  # removido temporariamente
     }
 
     preference_response = sdk.preference().create(preference_data)
