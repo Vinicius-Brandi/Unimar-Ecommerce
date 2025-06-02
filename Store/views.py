@@ -108,14 +108,15 @@ def excluir_carrinho(request, id_produto):
     return redirect('carrinho')
 
 def pagamento(request, vendedor_id):
+    from django.conf import settings  # Para pegar seu token da plataforma
+    
     vendedor = get_object_or_404(User, id=vendedor_id)
     carrinho = get_object_or_404(Carrinho, usuario=request.user)
-    
-    # Pega o token de acesso do vendedor a partir do seu perfil
-    seller_token = vendedor.perfil.mp_access_token
 
-    # Verificação crucial: O vendedor tem um token válido?
-    if not seller_token:
+    seller_token = vendedor.perfil.mp_access_token
+    seller_user_id = vendedor.perfil.mp_user_id  # ID do vendedor obtido na autenticação OAuth
+
+    if not seller_token or not seller_user_id:
         messages.error(request, f"O vendedor '{vendedor.first_name}' não está configurado para receber pagamentos.")
         return redirect('carrinho')
 
@@ -142,6 +143,7 @@ def pagamento(request, vendedor_id):
             quantidade=item.quantidade,
             preco=preco_item
         )
+
         payment_items.append({
             "id": str(item.produto.id),
             "title": item.produto.nome,
@@ -156,14 +158,17 @@ def pagamento(request, vendedor_id):
     comissao_total = round(subtotal_vendedor * MARKETPLACE_FEE_PERCENTAGE, 2)
     external_reference = str(order.id)
 
-    # A chamada agora passa o token do vendedor como o primeiro argumento
+    # ✅ Usa o token da plataforma e o ID do vendedor
+    platform_token = settings.MP_PLATFORM_ACCESS_TOKEN
+
     link_pagamento = realizar_pagamento(
-        seller_token, 
-        payment_items, 
-        external_reference, 
+        platform_token,          # Agora o token da plataforma
+        seller_user_id,          # ID do vendedor (collector_id)
+        payment_items,
+        external_reference,
         comissao_total
     )
-    
+
     itens_para_pagar.delete()
 
     return redirect(link_pagamento)
