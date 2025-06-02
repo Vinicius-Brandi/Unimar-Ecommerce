@@ -1,6 +1,14 @@
 # Store/admin.py
 from django.contrib import admin
-from .models import Categoria, Produto, Order, ItemOrder, Carrinho, ItemCarrinho, Solicitacao_Vendedor
+from .models import (
+    Categoria,
+    Produto,
+    Order,
+    ItemOrder,
+    Carrinho,
+    ItemCarrinho,
+    Solicitacao_Vendedor,
+)
 
 # Registre todos os seus modelos de loja aqui
 admin.site.register(Categoria)

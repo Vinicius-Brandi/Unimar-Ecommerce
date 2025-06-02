@@ -8,19 +8,34 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Store', '0002_alter_itemcarrinho_quantidade'),
+        ("Store", "0002_alter_itemcarrinho_quantidade"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Solicitacao_Vendedor',
+            name="Solicitacao_Vendedor",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('nome_completo', models.CharField(max_length=75)),
-                ('cpf', models.CharField(max_length=75)),
-                ('descricao', models.CharField(max_length=500)),
-                ('usuario', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='solicitacao_vendedor', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("nome_completo", models.CharField(max_length=75)),
+                ("cpf", models.CharField(max_length=75)),
+                ("descricao", models.CharField(max_length=500)),
+                (
+                    "usuario",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="solicitacao_vendedor",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]

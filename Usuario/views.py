@@ -11,76 +11,94 @@ import requests
 from django.urls import reverse
 from django.contrib.admin.views.decorators import staff_member_required
 
+
 def cadastrar(request):
     if request.method == "GET":
-        return render(request, 'cadastrar.html')
+        return render(request, "cadastrar.html")
     elif request.method == "POST":
-        username = request.POST.get('usuario') 
-        nome = request.POST.get('nome')
-        password1 = request.POST.get('senha1')
-        password2 = request.POST.get('senha2')
+        username = request.POST.get("usuario")
+        nome = request.POST.get("nome")
+        password1 = request.POST.get("senha1")
+        password2 = request.POST.get("senha2")
         if password1 != password2:
             messages.error(request, ("Senhas diferentes! tente novamente!"))
-            return redirect('cadastrar')
+            return redirect("cadastrar")
         else:
             user = User.objects.filter(username=username)
 
             if user:
-                 messages.error(request, ("O username já está cadastrado, tente novamente!"))
-                 return redirect('cadastrar') 
-            
-            user = User.objects.create_user(username=username, password=password1, first_name=nome)
+                messages.error(
+                    request, ("O username já está cadastrado, tente novamente!")
+                )
+                return redirect("cadastrar")
+
+            user = User.objects.create_user(
+                username=username, password=password1, first_name=nome
+            )
             user.save()
 
-
             messages.success(request, ("Cadastrado com sucesso! Faça seu login!"))
-            return redirect('logar')
+            return redirect("logar")
+
 
 def logar(request):
-    if request.method == 'GET':
-        return render(request, 'logar.html')
-    elif request.method == 'POST':
-        usuario = request.POST.get('usuario')
-        senha = request.POST.get('senha')
+    if request.method == "GET":
+        return render(request, "logar.html")
+    elif request.method == "POST":
+        usuario = request.POST.get("usuario")
+        senha = request.POST.get("senha")
         user = authenticate(request, username=usuario, password=senha)
 
         if user:
             login(request, user)
-            return redirect('home')
+            return redirect("home")
         else:
             messages.error(request, ("Usuario ou senha incorreto, tente novamente!"))
-            return redirect('logar')
+            return redirect("logar")
+
 
 def deslogar(request):
-        logout(request)
-        return redirect('home')
+    logout(request)
+    return redirect("home")
+
 
 def solicitar_vendedor(request):
-    if request.method == 'GET':
-        return render(request, 'solicitar_vendedor.html')
-    elif request.method == 'POST':
+    if request.method == "GET":
+        return render(request, "solicitar_vendedor.html")
+    elif request.method == "POST":
         if Solicitacao_Vendedor.objects.filter(usuario=request.user).exists():
-            messages.error(request, ("Você ja mandou solicitação! Aguarde a verificação!"))
-            return redirect('home')
+            messages.error(
+                request, ("Você ja mandou solicitação! Aguarde a verificação!")
+            )
+            return redirect("home")
         else:
-            nome_completo = request.POST.get('nome-completo')
-            cpf = request.POST.get('cpf')
-            descricao = request.POST.get('produtos-a-vender')
+            nome_completo = request.POST.get("nome-completo")
+            cpf = request.POST.get("cpf")
+            descricao = request.POST.get("produtos-a-vender")
 
-            solicitacao = Solicitacao_Vendedor.objects.create(usuario=request.user, nome_completo=nome_completo, cpf=cpf, descricao=descricao)
+            solicitacao = Solicitacao_Vendedor.objects.create(
+                usuario=request.user,
+                nome_completo=nome_completo,
+                cpf=cpf,
+                descricao=descricao,
+            )
             solicitacao.save()
 
-            messages.success(request, ("Solicitado com sucesso, aguarde até darmos uma resposta!"))
-            return redirect('home')
+            messages.success(
+                request, ("Solicitado com sucesso, aguarde até darmos uma resposta!")
+            )
+            return redirect("home")
+
 
 @staff_member_required
 def ver_solicitacao(request):
     solicitacoes = Solicitacao_Vendedor.objects.all()
-    return render(request, 'ver_solicitacao.html', {'solicitacoes':solicitacoes})
+    return render(request, "ver_solicitacao.html", {"solicitacoes": solicitacoes})
+
 
 @staff_member_required
 def aceitar_solicitacao(request, username):
-    user = get_object_or_404(User, username=username) 
+    user = get_object_or_404(User, username=username)
     user = User.objects.get(username=username)
     user.perfil.vendedor = True
     user.perfil.save()
@@ -88,7 +106,8 @@ def aceitar_solicitacao(request, username):
     solicitacao = Solicitacao_Vendedor.objects.get(usuario=user)
     solicitacao.delete()
 
-    return redirect('ver_solicitacao')
+    return redirect("ver_solicitacao")
+
 
 @staff_member_required
 def recusar_solicitacao(request, username):
@@ -98,32 +117,36 @@ def recusar_solicitacao(request, username):
 
     solicitacao = Solicitacao_Vendedor.objects.get(usuario=user)
     solicitacao.delete()
-    return redirect('ver_solicitacao')
+    return redirect("ver_solicitacao")
+
 
 def perfil(request, username):
     usuario = User.objects.get(username=username)
 
     try:
-        print(f"--- DEBUG PERFIL: Carregando perfil para {usuario.username}. Valor de mp_connected no BD é: {usuario.perfil.mp_connected} ---")
+        print(
+            f"--- DEBUG PERFIL: Carregando perfil para {usuario.username}. Valor de mp_connected no BD é: {usuario.perfil.mp_connected} ---"
+        )
     except Exception as e:
         print(f"--- DEBUG PERFIL: Erro ao ler o perfil: {e}")
 
-    return render(request, 'perfil_usuario.html', {'usuario':usuario})
+    return render(request, "perfil_usuario.html", {"usuario": usuario})
+
 
 def editar_perfil(request, username):
     usuario = User.objects.get(username=username)
 
-    if request.method == 'GET':
+    if request.method == "GET":
         if request.user.username == username:
-            return render(request, 'editar_perfil.html', {'usuario':usuario})
+            return render(request, "editar_perfil.html", {"usuario": usuario})
         else:
-            return redirect('home')
+            return redirect("home")
 
-    elif request.method == 'POST':
-        if 'salvar' in request.POST:
-            nome = request.POST.get('nome')
-            bios = request.POST.get('bios')
-            imagem = request.FILES.get('foto_perfil')
+    elif request.method == "POST":
+        if "salvar" in request.POST:
+            nome = request.POST.get("nome")
+            bios = request.POST.get("bios")
+            imagem = request.FILES.get("foto_perfil")
 
             if nome:
                 usuario.first_name = nome
@@ -134,21 +157,24 @@ def editar_perfil(request, username):
 
             if imagem:
                 perfil = usuario.perfil
-                caminho_imagem_default = perfil._meta.get_field('foto').default
+                caminho_imagem_default = perfil._meta.get_field("foto").default
 
                 if perfil.foto and perfil.foto.name != caminho_imagem_default:
                     if os.path.isfile(perfil.foto.path):
                         os.remove(perfil.foto.path)
-                fs = FileSystemStorage(location='media/uploads/fotos_perfil/', base_url='/media/uploads/fotos_perfil/')
+                fs = FileSystemStorage(
+                    location="media/uploads/fotos_perfil/",
+                    base_url="/media/uploads/fotos_perfil/",
+                )
                 filename = fs.save(imagem.name, imagem)
-                usuario.perfil.foto = 'uploads/fotos_perfil/' + filename 
+                usuario.perfil.foto = "uploads/fotos_perfil/" + filename
 
             usuario.perfil.save()
 
-            return redirect('perfil_user', username=username)
-        elif 'excluir' in request.POST:
+            return redirect("perfil_user", username=username)
+        elif "excluir" in request.POST:
             perfil = usuario.perfil
-            caminho_imagem_default = perfil._meta.get_field('foto').default
+            caminho_imagem_default = perfil._meta.get_field("foto").default
 
             if perfil.foto and perfil.foto.name != caminho_imagem_default:
                 if os.path.isfile(perfil.foto.path):
@@ -157,15 +183,21 @@ def editar_perfil(request, username):
             user = request.user
             user.delete()
             logout(request)
-            return redirect('home')
-    
+            return redirect("home")
+
+
 def lista_produtos(request, username):
     usuario = get_object_or_404(User, username=username)
 
     if request.user.username == username:
-        return render(request, 'lista_produtos.html', {'usuario':usuario, 'usuariousername':username})
+        return render(
+            request,
+            "lista_produtos.html",
+            {"usuario": usuario, "usuariousername": username},
+        )
     else:
-        return redirect('home')
+        return redirect("home")
+
 
 def editar_produto(request, id_produto):
     produto = Produto.objects.get(id=id_produto)
@@ -173,70 +205,80 @@ def editar_produto(request, id_produto):
 
     if request.method == "GET":
         if request.user == usuario:
-            return render(request, 'editar_produto.html', {'produto':produto})
+            return render(request, "editar_produto.html", {"produto": produto})
         else:
-            return redirect('home')
+            return redirect("home")
     elif request.method == "POST":
-        produto.nome = request.POST.get('nome')
-        produto.descricao = request.POST.get('descricao')
-        produto.preco = request.POST.get('preco')
-        produto.quantidade = request.POST.get('quantidade_estoque')
-        imagem = request.FILES.get('imagem')
+        produto.nome = request.POST.get("nome")
+        produto.descricao = request.POST.get("descricao")
+        produto.preco = request.POST.get("preco")
+        produto.quantidade = request.POST.get("quantidade_estoque")
+        imagem = request.FILES.get("imagem")
 
         if imagem:
-            fs = FileSystemStorage(location='media/uploads/produtos/', base_url='/media/uploads/produtos/')
+            fs = FileSystemStorage(
+                location="media/uploads/produtos/", base_url="/media/uploads/produtos/"
+            )
             filename = fs.save(imagem.name, imagem)
-            produto.imagem = 'uploads/produtos/' + filename 
-        
+            produto.imagem = "uploads/produtos/" + filename
+
         produto.save()
 
-        return redirect('perfil_user', username=usuario.username)
-    
+        return redirect("perfil_user", username=usuario.username)
+
+
 def adicionar_produto(request, username):
     if request.user.is_authenticated:
         perfil = get_object_or_404(Profile, usuario=request.user)
     else:
-        return redirect('home')
+        return redirect("home")
 
-    if request.method == 'GET':
+    if request.method == "GET":
         if perfil.vendedor and request.user.username == username:
-            return render(request, 'adicionar_produto.html', {'usuariousername':username})
+            return render(
+                request, "adicionar_produto.html", {"usuariousername": username}
+            )
         else:
-            return redirect('home')
+            return redirect("home")
 
-    elif request.method == 'POST':
+    elif request.method == "POST":
         produto = Produto.objects.create(vendedor=request.user)
-        produto.nome = request.POST.get('nome')
-        produto.descricao = request.POST.get('descricao')
-        produto.preco = request.POST.get('preco')
-        produto.quantidade = request.POST.get('quantidade_estoque')
-        imagem = request.FILES.get('imagem')
+        produto.nome = request.POST.get("nome")
+        produto.descricao = request.POST.get("descricao")
+        produto.preco = request.POST.get("preco")
+        produto.quantidade = request.POST.get("quantidade_estoque")
+        imagem = request.FILES.get("imagem")
 
-        fs = FileSystemStorage(location='media/uploads/produtos/', base_url='/media/uploads/produtos/')
+        fs = FileSystemStorage(
+            location="media/uploads/produtos/", base_url="/media/uploads/produtos/"
+        )
         filename = fs.save(imagem.name, imagem)
-        produto.imagem = 'uploads/produtos/' + filename 
-        
+        produto.imagem = "uploads/produtos/" + filename
+
         produto.save()
 
-        return redirect('perfil_user', username=request.user.username)
-    
+        return redirect("perfil_user", username=request.user.username)
+
+
 def excluir_produto(request, id_produto):
     produto = get_object_or_404(Produto, id=id_produto)
 
-    if request.method == 'POST':
+    if request.method == "POST":
 
         if produto.imagem:
             imagem_path = produto.imagem.path
             if os.path.exists(imagem_path):
                 os.remove(imagem_path)
         produto.delete()
-        return redirect('lista_produtos', username=request.user.username)
-    
-    return redirect('lista_produtos', username=request.user.username)
+        return redirect("lista_produtos", username=request.user.username)
+
+    return redirect("lista_produtos", username=request.user.username)
+
 
 def vendas(request):
     orders = request.user.order_seller.all()
-    return render(request, 'vendas.html', {'orders':orders})
+    return render(request, "vendas.html", {"orders": orders})
+
 
 def vendas_details(request, order_id):
     order = get_object_or_404(Order, id=order_id)
@@ -244,7 +286,8 @@ def vendas_details(request, order_id):
         raise Http404
 
     itemOrders = order.itens.all()
-    return render(request, 'vendas_details.html', {'itemOrders': itemOrders})
+    return render(request, "vendas_details.html", {"itemOrders": itemOrders})
+
 
 def conectar_mercado_pago(request):
     """
@@ -253,15 +296,17 @@ def conectar_mercado_pago(request):
     # Garante que o usuário esteja logado antes de prosseguir
     if not request.user.is_authenticated:
         messages.error(request, "Você precisa estar logado para realizar esta ação.")
-        return redirect('logar')
+        return redirect("logar")
 
     APP_ID = os.getenv("MP_APP_ID")
-    
+
     # A URL para a qual o Mercado Pago irá redirecionar o usuário após a autorização
-    redirect_uri = request.build_absolute_uri(reverse('mp_callback'))
+    redirect_uri = request.build_absolute_uri(reverse("mp_callback"))
 
     # ADICIONAMOS O PRINT AQUI
-    print(f"--- DEBUG: A URL de redirecionamento gerada para o Mercado Pago é: {redirect_uri}")
+    print(
+        f"--- DEBUG: A URL de redirecionamento gerada para o Mercado Pago é: {redirect_uri}"
+    )
 
     # Link de autorização
     auth_url = (
@@ -272,15 +317,16 @@ def conectar_mercado_pago(request):
         f"&state={request.user.id}"
         f"&redirect_uri={redirect_uri}"
     )
-    
+
     return redirect(auth_url)
+
 
 def mercado_pago_callback(request):
     """
     View que recebe o callback do Mercado Pago com o código de autorização.
     """
-    code = request.GET.get('code')
-    user_id = request.GET.get('state')
+    code = request.GET.get("code")
+    user_id = request.GET.get("state")
 
     print(f"--- DEBUG CALLBACK: Início da view. Código recebido: {code}")
 
@@ -288,11 +334,13 @@ def mercado_pago_callback(request):
         user = User.objects.get(id=user_id)
     except (User.DoesNotExist, ValueError):
         messages.error(request, "Usuário inválido durante a autenticação.")
-        return redirect('home')
+        return redirect("home")
 
     if not code:
-        messages.error(request, "A autorização falhou (código não recebido). Tente novamente.")
-        return redirect('perfil_user', username=user.username)
+        messages.error(
+            request, "A autorização falhou (código não recebido). Tente novamente."
+        )
+        return redirect("perfil_user", username=user.username)
 
     token_url = "https://api.mercadopago.com/oauth/token"
     payload = {
@@ -300,13 +348,13 @@ def mercado_pago_callback(request):
         "client_id": os.getenv("MP_APP_ID"),
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": request.build_absolute_uri(reverse('mp_callback'))
+        "redirect_uri": request.build_absolute_uri(reverse("mp_callback")),
     }
-    headers = { "Content-Type": "application/x-www-form-urlencoded" }
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
     print("--- DEBUG CALLBACK: Enviando requisição para obter o token...")
     response = requests.post(token_url, data=payload, headers=headers)
-    
+
     # ---- INÍCIO DA NOVA DEPURAÇÃO ----
     print(f"--- DEBUG CALLBACK: Status Code da Resposta do MP: {response.status_code}")
     try:
@@ -317,20 +365,26 @@ def mercado_pago_callback(request):
 
     if response.status_code == 200:
         data = response.json()
-        user.perfil.mp_access_token = data.get('access_token')
-        user.perfil.mp_refresh_token = data.get('refresh_token')
-        user.perfil.mp_user_id = data.get('user_id')
+        user.perfil.mp_access_token = data.get("access_token")
+        user.perfil.mp_refresh_token = data.get("refresh_token")
+        user.perfil.mp_user_id = data.get("user_id")
         user.perfil.mp_connected = True
         user.perfil.save()
-        print(f"--- DEBUG CALLBACK: SUCESSO! Perfil de {user.username} salvo com mp_connected=True.")
+        print(
+            f"--- DEBUG CALLBACK: SUCESSO! Perfil de {user.username} salvo com mp_connected=True."
+        )
         messages.success(request, "Sua conta Mercado Pago foi conectada com sucesso!")
-        return redirect('perfil_user', username=user.username)
+        return redirect("perfil_user", username=user.username)
     else:
         error_message = "Erro desconhecido na resposta do Mercado Pago."
         try:
-            error_message = response.json().get('message', error_message)
+            error_message = response.json().get("message", error_message)
         except Exception:
             pass
-        messages.error(request, f"Não foi possível finalizar a conexão: {error_message}")
-        print(f"--- DEBUG CALLBACK: FALHA! Redirecionando para o perfil de {user.username}.")
-        return redirect('perfil_user', username=user.username)
+        messages.error(
+            request, f"Não foi possível finalizar a conexão: {error_message}"
+        )
+        print(
+            f"--- DEBUG CALLBACK: FALHA! Redirecionando para o perfil de {user.username}."
+        )
+        return redirect("perfil_user", username=user.username)

@@ -6,28 +6,28 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Usuario', '0001_initial'),
+        ("Usuario", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='profile',
-            name='mp_access_token',
+            model_name="profile",
+            name="mp_access_token",
             field=models.CharField(blank=True, max_length=255, null=True),
         ),
         migrations.AddField(
-            model_name='profile',
-            name='mp_connected',
+            model_name="profile",
+            name="mp_connected",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='profile',
-            name='mp_refresh_token',
+            model_name="profile",
+            name="mp_refresh_token",
             field=models.CharField(blank=True, max_length=255, null=True),
         ),
         migrations.AddField(
-            model_name='profile',
-            name='mp_user_id',
+            model_name="profile",
+            name="mp_user_id",
             field=models.CharField(blank=True, max_length=255, null=True),
         ),
     ]

@@ -15,13 +15,39 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Profile',
+            name="Profile",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('vendedor', models.BooleanField(default=False)),
-                ('foto', models.ImageField(default='uploads/fotos_perfil/DefaultProfileImage.png', upload_to='uploads/fotos_perfil/')),
-                ('bios', models.CharField(default='Olá, este é o meu Perfil!', max_length=255)),
-                ('usuario', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='perfil', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("vendedor", models.BooleanField(default=False)),
+                (
+                    "foto",
+                    models.ImageField(
+                        default="uploads/fotos_perfil/DefaultProfileImage.png",
+                        upload_to="uploads/fotos_perfil/",
+                    ),
+                ),
+                (
+                    "bios",
+                    models.CharField(
+                        default="Olá, este é o meu Perfil!", max_length=255
+                    ),
+                ),
+                (
+                    "usuario",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="perfil",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]
