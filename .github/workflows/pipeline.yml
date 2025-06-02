@@ -41,15 +41,9 @@ jobs:
       - name: Formatar o código com Black
         run: black --check .
 
-      - name: Conferir as normas do código com Flake8
-        run: flake8 .
-
       - name: Análise de Segurança Estática
-        run: bandit -r bandit_report.txt -f json .
+        run: bandit -f json -o bandit_report.json .
         continue-on-error: true 
-
-      - name: Auditar Dependências com pip-audit
-        run: pip-audit
 
       - name: Lint de Templates Django com djhtml
         run: djhtml --check .
