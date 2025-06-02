@@ -12,6 +12,7 @@ import requests
 from django.urls import reverse
 from django.contrib.admin.views.decorators import staff_member_required
 
+
 def cadastrar(request):
     if request.method == "GET":
         return render(request, "cadastrar.html")
@@ -238,11 +239,9 @@ def adicionar_produto(request, username):
     if request.method == "GET":
         if perfil.vendedor and request.user.username == username:
             # ALTERAÇÃO 1: Buscando as categorias para enviar ao template
-            categorias = Categoria.objects.prefetch_related('subcategorias').all()
-            
-            contexto = {
-                "categorias": categorias
-            }
+            categorias = Categoria.objects.prefetch_related("subcategorias").all()
+
+            contexto = {"categorias": categorias}
             return render(request, "adicionar_produto.html", contexto)
         else:
             return redirect("home")
@@ -251,30 +250,30 @@ def adicionar_produto(request, username):
     elif request.method == "POST":
         # ALTERAÇÃO 2: Puxando o ID da subcategoria do formulário
         subcategoria_id = request.POST.get("subcategoria")
-        
+
         # Validação para garantir que uma subcategoria foi escolhida
         if not subcategoria_id:
             # Aqui você pode adicionar uma mensagem de erro se quiser
             # messages.error(request, "Você precisa selecionar uma categoria.")
             # E recarregar a página com os dados que o usuário já preencheu
-            return redirect('adicionar_produto', username=request.user.username)
+            return redirect("adicionar_produto", username=request.user.username)
 
         subcategoria_obj = get_object_or_404(Subcategoria, id=subcategoria_id)
-        
+
         # O resto da sua lógica de criação de produto
-        produto = Produto(vendedor=request.user) # É melhor instanciar sem salvar ainda
+        produto = Produto(vendedor=request.user)  # É melhor instanciar sem salvar ainda
         produto.nome = request.POST.get("nome")
         produto.descricao = request.POST.get("descricao")
         produto.preco = request.POST.get("preco")
         produto.quantidade = request.POST.get("quantidade_estoque")
-        
+
         # ALTERAÇÃO 3: Associando a subcategoria encontrada ao produto
         produto.subcategoria = subcategoria_obj
 
         # Sua lógica de imagem
         imagem = request.FILES.get("imagem")
         if imagem:
-            # O próprio ImageField do Django pode cuidar disso se configurado, 
+            # O próprio ImageField do Django pode cuidar disso se configurado,
             # mas mantendo sua lógica:
             fs = FileSystemStorage(
                 location="media/uploads/produtos/", base_url="/media/uploads/produtos/"

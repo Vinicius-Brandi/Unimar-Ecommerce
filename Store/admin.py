@@ -8,7 +8,7 @@ from .models import (
     Carrinho,
     ItemCarrinho,
     Solicitacao_Vendedor,
-    Subcategoria
+    Subcategoria,
 )
 
 # Registre todos os seus modelos de loja aqui

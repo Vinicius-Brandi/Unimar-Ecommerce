@@ -14,12 +14,16 @@ class Categoria(models.Model):
     def __str__(self):
         return self.nome
 
+
 class Subcategoria(models.Model):
     nome = models.CharField(max_length=50)
-    categoria_pai = models.ForeignKey(Categoria, related_name="subcategorias", on_delete=models.CASCADE, default=1)
+    categoria_pai = models.ForeignKey(
+        Categoria, related_name="subcategorias", on_delete=models.CASCADE, default=1
+    )
 
     def __str__(self):
-        return f'{self.nome} - {self.categoria_pai}'
+        return f"{self.nome} - {self.categoria_pai}"
+
 
 class Produto(models.Model):
     nome = models.CharField(max_length=50)

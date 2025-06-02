@@ -25,15 +25,15 @@
                 <p>Quantidade Estoque</p>
                 <input class="form-input" type="number" name='quantidade_estoque' step="1" min="0" required>
             </div>
-            
+
             <div class='form-field'>
                 <p>Categoria do Produto</p>
                 <select class="form-input-category" name="subcategoria" required>
                     <option value="" disabled selected>-- Selecione uma categoria --</option>
-                    
+
                     {% for categoria in categorias %}
                         <optgroup label="{{ categoria.nome }}">
-                            
+
                             {% for subcategoria in categoria.subcategorias.all %}
                                 <option value="{{ subcategoria.id }}">{{ subcategoria.nome }}</option>
                             {% endfor %}
