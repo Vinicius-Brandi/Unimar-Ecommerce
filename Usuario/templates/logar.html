@@ -1,12 +1,12 @@
-    {% extends 'base.html' %}
+{% extends 'base.html' %}
 
-    {% block body %}
+{% block body %}
 
     {% if messages %}
         {% for message in messages %}
-        <div class="messages-box {{ message.level_tag }}">
-            {{ message }}
-        </div>
+            <div class="messages-box {{ message.level_tag }}">
+                {{ message }}
+            </div>
         {% endfor %}
     {% endif %}
     <div class="form">
@@ -18,16 +18,16 @@
                 <p>Usuario</p>
                 <input class="form-input" type="text" name='usuario'>
             </div>
-        
+
             <div class='form-field'>
                 <p>Senha</p>
                 <input class="form-input" type="password" name='senha'>
             </div>
-        
+
             <div class='form-field'>
                 <input class="form-button" type="submit" value="Logar">
             </div>
-        
+
         </form>
     </div>
-    {% endblock body %}
+{% endblock body %}

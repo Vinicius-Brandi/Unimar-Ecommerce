@@ -4,31 +4,31 @@
 
 {% block body %}
 
-{% if messages %}
-    {% for message in messages %}
-    <div class="messages-box {{ message.level_tag }}">
-        {{ message }}
-    </div>
-    {% endfor %}
-{% endif %}
-
-<div class="home-div">
-    <div class="unimar-banner">
-        <p>O melhor Marketplace da Unimar!</p>
-        <img src="{% static 'assets/unimar-banner.webp' %}">
-    </div>
-
-    <div class="products-showcase">
-        {% for produto in produtos %}
-            {% if produto.quantidade > 0 %}
-                <div class="product">
-                    <img src="{{produto.imagem.url}}">
-                    <p class="product-name">{{produto.nome}}</p>
-                    <p class="product-price">R${{produto.preco}}</p>
-                    <a href="{% url "pagina_produto" produto.id %}">Ver</a>
-                </div>
-            {% endif %}
+    {% if messages %}
+        {% for message in messages %}
+            <div class="messages-box {{ message.level_tag }}">
+                {{ message }}
+            </div>
         {% endfor %}
+    {% endif %}
+
+    <div class="home-div">
+        <div class="unimar-banner">
+            <p>O melhor Marketplace da Unimar!</p>
+            <img src="{% static 'assets/unimar-banner.webp' %}">
+        </div>
+
+        <div class="products-showcase">
+            {% for produto in produtos %}
+                {% if produto.quantidade > 0 %}
+                    <div class="product">
+                        <img src="{{produto.imagem.url}}">
+                        <p class="product-name">{{produto.nome}}</p>
+                        <p class="product-price">R${{produto.preco}}</p>
+                        <a href="{% url "pagina_produto" produto.id %}">Ver</a>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
     </div>
-</div>
 {% endblock body %}
