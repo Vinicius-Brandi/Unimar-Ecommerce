@@ -1,12 +1,7 @@
-# Store/models.py
-
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator
 import uuid
-
-# Todos os modelos a seguir pertencem à lógica da loja (Store).
-
 
 class Categoria(models.Model):
     nome = models.CharField(max_length=50)

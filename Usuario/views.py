@@ -202,14 +202,17 @@ def lista_produtos(request, username):
 
 def editar_produto(request, id_produto):
     produto = Produto.objects.get(id=id_produto)
-    usuario = User.objects.get(id=produto.vendedor.id)
 
     if request.method == "GET":
-        if request.user == usuario:
+        if request.user == produto.vendedor:
             return render(request, "editar_produto.html", {"produto": produto})
         else:
             return redirect("home")
+            
     elif request.method == "POST":
+        if request.user != produto.vendedor:
+            return redirect("home")
+
         produto.nome = request.POST.get("nome")
         produto.descricao = request.POST.get("descricao")
         produto.preco = request.POST.get("preco")
@@ -217,28 +220,35 @@ def editar_produto(request, id_produto):
         imagem = request.FILES.get("imagem")
 
         if imagem:
+            caminho_imagem_antiga = ""
+            if produto.imagem:
+                caminho_imagem_antiga = os.path.join(settings.MEDIA_ROOT, str(produto.imagem))
+
             fs = FileSystemStorage(
                 location="media/uploads/produtos/", base_url="/media/uploads/produtos/"
             )
             filename = fs.save(imagem.name, imagem)
+            
             produto.imagem = "uploads/produtos/" + filename
+
+            if caminho_imagem_antiga and os.path.isfile(caminho_imagem_antiga):
+                os.remove(caminho_imagem_antiga)
 
         produto.save()
 
-        return redirect("perfil_user", username=usuario.username)
+        return redirect("perfil_user", username=produto.vendedor.username)
+
+    return redirect("home")
 
 
 def adicionar_produto(request, username):
-    # A verificação de autenticação e perfil continua a mesma
     if request.user.is_authenticated:
         perfil = get_object_or_404(Profile, usuario=request.user)
     else:
         return redirect("home")
 
-    # Quando a página é carregada (GET)
     if request.method == "GET":
         if perfil.vendedor and request.user.username == username:
-            # ALTERAÇÃO 1: Buscando as categorias para enviar ao template
             categorias = Categoria.objects.prefetch_related("subcategorias").all()
 
             contexto = {"categorias": categorias}
@@ -246,42 +256,30 @@ def adicionar_produto(request, username):
         else:
             return redirect("home")
 
-    # Quando o formulário é enviado (POST)
     elif request.method == "POST":
-        # ALTERAÇÃO 2: Puxando o ID da subcategoria do formulário
         subcategoria_id = request.POST.get("subcategoria")
 
-        # Validação para garantir que uma subcategoria foi escolhida
         if not subcategoria_id:
-            # Aqui você pode adicionar uma mensagem de erro se quiser
-            # messages.error(request, "Você precisa selecionar uma categoria.")
-            # E recarregar a página com os dados que o usuário já preencheu
             return redirect("adicionar_produto", username=request.user.username)
 
         subcategoria_obj = get_object_or_404(Subcategoria, id=subcategoria_id)
 
-        # O resto da sua lógica de criação de produto
-        produto = Produto(vendedor=request.user)  # É melhor instanciar sem salvar ainda
+        produto = Produto(vendedor=request.user)
         produto.nome = request.POST.get("nome")
         produto.descricao = request.POST.get("descricao")
         produto.preco = request.POST.get("preco")
         produto.quantidade = request.POST.get("quantidade_estoque")
 
-        # ALTERAÇÃO 3: Associando a subcategoria encontrada ao produto
         produto.subcategoria = subcategoria_obj
 
-        # Sua lógica de imagem
         imagem = request.FILES.get("imagem")
         if imagem:
-            # O próprio ImageField do Django pode cuidar disso se configurado,
-            # mas mantendo sua lógica:
             fs = FileSystemStorage(
                 location="media/uploads/produtos/", base_url="/media/uploads/produtos/"
             )
             filename = fs.save(imagem.name, imagem)
             produto.imagem = "uploads/produtos/" + filename
 
-        # Agora salvamos o produto com todos os dados
         produto.save()
 
         return redirect("perfil_user", username=request.user.username)
@@ -317,25 +315,14 @@ def vendas_details(request, order_id):
 
 
 def conectar_mercado_pago(request):
-    """
-    Redireciona o vendedor para a tela de autorização do Mercado Pago.
-    """
-    # Garante que o usuário esteja logado antes de prosseguir
     if not request.user.is_authenticated:
         messages.error(request, "Você precisa estar logado para realizar esta ação.")
         return redirect("logar")
 
     APP_ID = os.getenv("MP_APP_ID")
 
-    # A URL para a qual o Mercado Pago irá redirecionar o usuário após a autorização
     redirect_uri = request.build_absolute_uri(reverse("mp_callback"))
 
-    # ADICIONAMOS O PRINT AQUI
-    print(
-        f"--- DEBUG: A URL de redirecionamento gerada para o Mercado Pago é: {redirect_uri}"
-    )
-
-    # Link de autorização
     auth_url = (
         f"https://auth.mercadopago.com.br/authorization"
         f"?client_id={APP_ID}"
@@ -349,13 +336,8 @@ def conectar_mercado_pago(request):
 
 
 def mercado_pago_callback(request):
-    """
-    View que recebe o callback do Mercado Pago com o código de autorização.
-    """
     code = request.GET.get("code")
     user_id = request.GET.get("state")
-
-    print(f"--- DEBUG CALLBACK: Início da view. Código recebido: {code}")
 
     try:
         user = User.objects.get(id=user_id)
@@ -381,14 +363,6 @@ def mercado_pago_callback(request):
 
     print("--- DEBUG CALLBACK: Enviando requisição para obter o token...")
     response = requests.post(token_url, data=payload, headers=headers)
-
-    # ---- INÍCIO DA NOVA DEPURAÇÃO ----
-    print(f"--- DEBUG CALLBACK: Status Code da Resposta do MP: {response.status_code}")
-    try:
-        print(f"--- DEBUG CALLBACK: Conteúdo da Resposta do MP: {response.json()}")
-    except Exception:
-        print(f"--- DEBUG CALLBACK: Conteúdo Bruto da Resposta do MP: {response.text}")
-    # ---- FIM DA NOVA DEPURAÇÃO ----
 
     if response.status_code == 200:
         data = response.json()

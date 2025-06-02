@@ -68,24 +68,22 @@ def carrinho(request):
     except Carrinho.DoesNotExist:
         itens_do_carrinho = []
 
-    # Se o carrinho estiver vazio
     if not itens_do_carrinho:
         return render(request, "carrinho.html", {"itens_por_vendedor": {}})
 
-    # Agrupando itens e calculando subtotais por vendedor
     itens_por_vendedor = defaultdict(lambda: {"itens": [], "subtotal": Decimal("0.00")})
     for item in itens_do_carrinho:
         vendedor = item.produto.vendedor
         subtotal_item = (
             item.subtotal()
-        )  # Usando o método subtotal do modelo ItemCarrinho
+        )
 
         itens_por_vendedor[vendedor]["itens"].append(item)
         itens_por_vendedor[vendedor]["subtotal"] += subtotal_item
 
     contexto = {
         "usuario": request.user,
-        "itens_por_vendedor": dict(itens_por_vendedor),  # Convertendo para dict normal
+        "itens_por_vendedor": dict(itens_por_vendedor),
         "total_carrinho": carrinho_usuario.total(),
     }
 
@@ -140,10 +138,8 @@ def pagamento(request, vendedor_id):
     vendedor = get_object_or_404(User, id=vendedor_id)
     carrinho = get_object_or_404(Carrinho, usuario=request.user)
 
-    # Pega o token de acesso do vendedor a partir do seu perfil
     seller_token = vendedor.perfil.mp_access_token
 
-    # Verificação crucial: O vendedor tem um token válido?
     if not seller_token:
         messages.error(
             request,
@@ -190,7 +186,6 @@ def pagamento(request, vendedor_id):
     comissao_total = round(subtotal_vendedor * MARKETPLACE_FEE_PERCENTAGE, 2)
     external_reference = str(order.id)
 
-    # A chamada agora passa o token do vendedor como o primeiro argumento
     link_pagamento = realizar_pagamento(
         seller_token, payment_items, external_reference, comissao_total
     )
@@ -226,23 +221,20 @@ def mercadopago_webhook(request):
                 status=400,
             )
 
-        # Se vários IDs estiverem separados por vírgula
         pedido_ids = external_reference.split(",")
         pedidos = Order.objects.filter(id__in=pedido_ids)
 
         for pedido in pedidos:
             pedido.status_pagamento = (
-                payment_status  # Você precisa ter esse campo no model Order
+                payment_status
             )
             pedido.save()
 
-            # Exemplo: Atualizar estoque apenas se for aprovado
             if payment_status == "approved":
                 for pedido_id in pedido_ids:
                     try:
                         pedido = Order.objects.get(id=pedido_id)
 
-                        # Verifica se o pedido já foi aprovado
                         if pedido.status_pagamento != "approved":
                             pedido.status_pagamento = "approved"
                             pedido.save()
