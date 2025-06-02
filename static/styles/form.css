@@ -51,6 +51,16 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 1);
 }
 
+.form-input-category {
+    margin-top: 2px;
+    width: 250px;
+    border-radius: 20px;
+    border: none;
+    padding: 10px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 1);
+}
+
 .form-input-bios {
     width: 250px;
     border-radius: 20px;

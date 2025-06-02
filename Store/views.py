@@ -16,10 +16,13 @@ import os
 import mercadopago
 from decimal import Decimal
 
+from django.db.models import Q
+
 
 def home(request):
     produtos = Produto.objects.all()
-    return render(request, "home.html", {"produtos": produtos})
+    categorias = Categoria.objects.all()
+    return render(request, "home.html", {"produtos": produtos, "categorias": categorias})
 
 
 def produto(request, id_produto):
@@ -35,6 +38,16 @@ def produto(request, id_produto):
         else:
             messages.error(request, ("Você deve estar logado para acessar o carrinho"))
             return redirect("logar")
+        
+def categoria(request, nome_categoria):
+    filtro_subcategoria = Q(subcategoria__nome__iexact=nome_categoria)
+    filtro_categoria_pai = Q(subcategoria__categoria_pai__nome__iexact=nome_categoria)
+
+    produtos = Produto.objects.filter(filtro_subcategoria | filtro_categoria_pai).distinct()
+
+    categorias = Categoria.objects.all()
+    
+    return render(request, 'home-category.html', {"produtos": produtos, "categorias": categorias})
 
 
 def carrinho(request):

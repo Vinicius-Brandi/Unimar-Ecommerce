@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.auth.models import User
 from .models import Profile
+from Store.models import Categoria, Subcategoria
 from Store.models import Produto, Order, Solicitacao_Vendedor
 from django.core.files.storage import FileSystemStorage
 import os
@@ -10,7 +11,6 @@ from django.http import Http404
 import requests
 from django.urls import reverse
 from django.contrib.admin.views.decorators import staff_member_required
-
 
 def cadastrar(request):
     if request.method == "GET":
@@ -228,33 +228,61 @@ def editar_produto(request, id_produto):
 
 
 def adicionar_produto(request, username):
+    # A verificação de autenticação e perfil continua a mesma
     if request.user.is_authenticated:
         perfil = get_object_or_404(Profile, usuario=request.user)
     else:
         return redirect("home")
 
+    # Quando a página é carregada (GET)
     if request.method == "GET":
         if perfil.vendedor and request.user.username == username:
-            return render(
-                request, "adicionar_produto.html", {"usuariousername": username}
-            )
+            # ALTERAÇÃO 1: Buscando as categorias para enviar ao template
+            categorias = Categoria.objects.prefetch_related('subcategorias').all()
+            
+            contexto = {
+                "categorias": categorias
+            }
+            return render(request, "adicionar_produto.html", contexto)
         else:
             return redirect("home")
 
+    # Quando o formulário é enviado (POST)
     elif request.method == "POST":
-        produto = Produto.objects.create(vendedor=request.user)
+        # ALTERAÇÃO 2: Puxando o ID da subcategoria do formulário
+        subcategoria_id = request.POST.get("subcategoria")
+        
+        # Validação para garantir que uma subcategoria foi escolhida
+        if not subcategoria_id:
+            # Aqui você pode adicionar uma mensagem de erro se quiser
+            # messages.error(request, "Você precisa selecionar uma categoria.")
+            # E recarregar a página com os dados que o usuário já preencheu
+            return redirect('adicionar_produto', username=request.user.username)
+
+        subcategoria_obj = get_object_or_404(Subcategoria, id=subcategoria_id)
+        
+        # O resto da sua lógica de criação de produto
+        produto = Produto(vendedor=request.user) # É melhor instanciar sem salvar ainda
         produto.nome = request.POST.get("nome")
         produto.descricao = request.POST.get("descricao")
         produto.preco = request.POST.get("preco")
         produto.quantidade = request.POST.get("quantidade_estoque")
+        
+        # ALTERAÇÃO 3: Associando a subcategoria encontrada ao produto
+        produto.subcategoria = subcategoria_obj
+
+        # Sua lógica de imagem
         imagem = request.FILES.get("imagem")
+        if imagem:
+            # O próprio ImageField do Django pode cuidar disso se configurado, 
+            # mas mantendo sua lógica:
+            fs = FileSystemStorage(
+                location="media/uploads/produtos/", base_url="/media/uploads/produtos/"
+            )
+            filename = fs.save(imagem.name, imagem)
+            produto.imagem = "uploads/produtos/" + filename
 
-        fs = FileSystemStorage(
-            location="media/uploads/produtos/", base_url="/media/uploads/produtos/"
-        )
-        filename = fs.save(imagem.name, imagem)
-        produto.imagem = "uploads/produtos/" + filename
-
+        # Agora salvamos o produto com todos os dados
         produto.save()
 
         return redirect("perfil_user", username=request.user.username)

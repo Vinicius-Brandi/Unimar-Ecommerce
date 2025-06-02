@@ -8,10 +8,12 @@ from .models import (
     Carrinho,
     ItemCarrinho,
     Solicitacao_Vendedor,
+    Subcategoria
 )
 
 # Registre todos os seus modelos de loja aqui
 admin.site.register(Categoria)
+admin.site.register(Subcategoria)
 admin.site.register(Produto)
 admin.site.register(Order)
 admin.site.register(ItemOrder)
