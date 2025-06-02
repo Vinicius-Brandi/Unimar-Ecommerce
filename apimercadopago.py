@@ -5,7 +5,7 @@ import os
 # A função agora recebe o seller_access_token como primeiro argumento
 def realizar_pagamento(seller_access_token, items, external_reference, application_fee):
 
-    # IMPORTANTE: O SDK é iniciado com o token do VENDEDOR
+    # IMPORTANTE: O SDK é iniciado com o token do VENDEDEDOR
     sdk = mercadopago.SDK(seller_access_token)
 
     preference_data = {
