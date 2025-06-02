@@ -10,8 +10,6 @@ from django.http import JsonResponse
 import json
 from collections import defaultdict
 
-from django.conf import settings
-
 from apimercadopago import realizar_pagamento
 from dotenv import load_dotenv
 import os
