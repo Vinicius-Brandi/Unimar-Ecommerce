@@ -1,11 +1,15 @@
+# apimercadopago.py
 import mercadopago
 import os
+from dotenv import load_dotenv # Adicionado para garantir carregamento do .env, se usado localmente
 
+def realizar_pagamento(seller_access_token, items, external_reference, fee_amount): # Nome do parâmetro da taxa alterado para clareza
+    load_dotenv() # Carrega variáveis do .env se estiver testando localmente
 
-# A função agora recebe o seller_access_token como primeiro argumento
-def realizar_pagamento(seller_access_token, items, external_reference, application_fee):
+    if not seller_access_token:
+        raise Exception("seller_access_token não fornecido para realizar_pagamento.")
 
-    # IMPORTANTE: O SDK é iniciado com o token do VENDEDEDOR
+    # IMPORTANTE: O SDK é iniciado com o token do VENDEDOR
     sdk = mercadopago.SDK(seller_access_token)
 
     preference_data = {
@@ -18,20 +22,24 @@ def realizar_pagamento(seller_access_token, items, external_reference, applicati
         "auto_return": "all",
         "notification_url": "https://unimarprojects.pythonanywhere.com/webhook/mercadopago/",
         "external_reference": external_reference,
-        # A taxa da sua aplicação (a comissão do marketplace)
-        "application_fee": float(application_fee),
+        # MUDANÇA CRÍTICA: Usando marketplace_fee para Checkout Pro
+        "marketplace_fee": float(fee_amount),
     }
+
+    # DEBUG: Para ver o que está sendo enviado
+    print("--- DEBUG API MP (Seller Token Model): Enviando Preference Data:", preference_data)
 
     preference_response = sdk.preference().create(preference_data)
 
-    if (
-        "response" in preference_response
-        and "init_point" in preference_response["response"]
-    ):
+    if "response" not in preference_response:
+        print("--- DEBUG API MP (Seller Token Model): Erro Completo:", preference_response)
+        error_details = preference_response.get("message", "Erro desconhecido ao criar preferência.")
+        raise Exception(f"Erro ao criar link de pagamento: {error_details}")
+
+    if "init_point" in preference_response["response"]:
+        print("--- DEBUG API MP (Seller Token Model): Sucesso, init_point:", preference_response["response"]["init_point"])
         return preference_response["response"]["init_point"]
     else:
-        # Adicionando mais detalhes ao erro para facilitar a depuração
-        error_details = preference_response.get("response", {}).get(
-            "message", "Erro desconhecido"
-        )
+        print("--- DEBUG API MP (Seller Token Model): Erro na Resposta:", preference_response["response"])
+        error_details = preference_response["response"].get("message", "init_point não encontrado na resposta")
         raise Exception(f"Erro ao criar link de pagamento: {error_details}")

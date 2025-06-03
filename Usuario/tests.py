@@ -534,17 +534,3 @@ class UsuarioViewsCoverageTests(TestCase):
             self.assertRedirects(
                 response, reverse("perfil_user", args=[self.user_a.username])
             )
-
-    @patch("Usuario.views.print")
-    def test_profile_view_with_no_profile_object(self, mock_print):
-        """
-        Testa o bloco try/except na view de perfil, caso o perfil não exista.
-        """
-        user_no_profile = User.objects.create_user("nouser", "password")
-        Profile.objects.get(usuario=user_no_profile).delete()
-
-        self.client.get(reverse("perfil_user", args=[user_no_profile.username]))
-
-        self.assertTrue(mock_print.called)
-        call_args, _ = mock_print.call_args
-        self.assertIn("Erro ao ler o perfil", call_args[0])

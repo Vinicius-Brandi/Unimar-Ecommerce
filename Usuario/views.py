@@ -125,13 +125,6 @@ def recusar_solicitacao(request, username):
 def perfil(request, username):
     usuario = User.objects.get(username=username)
 
-    try:
-        print(
-            f"--- DEBUG PERFIL: Carregando perfil para {usuario.username}. Valor de mp_connected no BD é: {usuario.perfil.mp_connected} ---"
-        )
-    except Exception as e:
-        print(f"--- DEBUG PERFIL: Erro ao ler o perfil: {e}")
-
     return render(request, "perfil_usuario.html", {"usuario": usuario})
 
 
@@ -364,7 +357,6 @@ def mercado_pago_callback(request):
     }
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
-    print("--- DEBUG CALLBACK: Enviando requisição para obter o token...")
     response = requests.post(token_url, data=payload, headers=headers)
 
     if response.status_code == 200:
@@ -374,9 +366,6 @@ def mercado_pago_callback(request):
         user.perfil.mp_user_id = data.get("user_id")
         user.perfil.mp_connected = True
         user.perfil.save()
-        print(
-            f"--- DEBUG CALLBACK: SUCESSO! Perfil de {user.username} salvo com mp_connected=True."
-        )
         messages.success(request, "Sua conta Mercado Pago foi conectada com sucesso!")
         return redirect("perfil_user", username=user.username)
     else:
@@ -387,8 +376,5 @@ def mercado_pago_callback(request):
             pass
         messages.error(
             request, f"Não foi possível finalizar a conexão: {error_message}"
-        )
-        print(
-            f"--- DEBUG CALLBACK: FALHA! Redirecionando para o perfil de {user.username}."
         )
         return redirect("perfil_user", username=user.username)

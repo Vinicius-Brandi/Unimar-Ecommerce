@@ -92,10 +92,15 @@ class StoreViewsTest(TestCase):
         )
         # ACESSA E ATUALIZA OS PERFIS JÁ CRIADOS PELO SIGNAL
         self.vendedor.perfil.mp_access_token = "TEST_ACCESS_TOKEN_FOR_SELLER"
+        self.vendedor.perfil.mp_connected = True  # ✨ LINHA FALTANTE ADICIONADA AQUI
         self.vendedor.perfil.save()
+        
+        # É uma boa prática fazer o mesmo para o comprador, caso ele precise no futuro
         self.comprador.perfil.mp_access_token = "TEST_ACCESS_TOKEN_FOR_BUYER"
+        self.comprador.perfil.mp_connected = True
         self.comprador.perfil.save()
 
+        # ... o resto da sua função setUp continua igual ...
         self.categoria = Categoria.objects.create(nome="View Tests")
         self.subcategoria = Subcategoria.objects.create(
             nome="Monitores", categoria_pai=self.categoria
@@ -166,7 +171,10 @@ class StoreViewsTest(TestCase):
 
         order_count_before = Order.objects.count()
 
-        response = self.client.get(reverse("pagamento", args=[self.vendedor.id]))
+        # ✨ CORREÇÃO APLICADA AQUI ✨
+        # A requisição foi alterada de .get() para .post() para corresponder
+        # à nova lógica da sua view, que cria o pedido ao receber um POST.
+        response = self.client.post(reverse("pagamento", args=[self.vendedor.id]))
 
         order_count_after = Order.objects.count()
 
