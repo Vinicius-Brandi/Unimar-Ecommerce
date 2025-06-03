@@ -73,7 +73,8 @@ class TestMercadoPago(unittest.TestCase):
             realizar_pagamento("TOKEN", [], "REF-DESCONHECIDA", 5.0)
 
         self.assertEqual(
-            str(context.exception), "Erro ao criar link de pagamento: Erro desconhecido ao criar preferência."
+            str(context.exception),
+            "Erro ao criar link de pagamento: Erro desconhecido ao criar preferência.",
         )
 
     # NOVO TESTE ADICIONADO ABAIXO
@@ -90,14 +91,14 @@ class TestMercadoPago(unittest.TestCase):
         # Verificamos a mensagem de erro específica para este caso
         self.assertEqual(
             str(context.exception),
-            "seller_access_token não fornecido para realizar_pagamento."
+            "seller_access_token não fornecido para realizar_pagamento.",
         )
 
         # Podemos testar com uma string vazia também para garantir
         with self.assertRaises(Exception) as context:
             realizar_pagamento("", [], "REF-SEM-TOKEN", 0)
-        
+
         self.assertEqual(
             str(context.exception),
-            "seller_access_token não fornecido para realizar_pagamento."
+            "seller_access_token não fornecido para realizar_pagamento.",
         )

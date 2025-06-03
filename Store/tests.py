@@ -94,7 +94,7 @@ class StoreViewsTest(TestCase):
         self.vendedor.perfil.mp_access_token = "TEST_ACCESS_TOKEN_FOR_SELLER"
         self.vendedor.perfil.mp_connected = True  # ✨ LINHA FALTANTE ADICIONADA AQUI
         self.vendedor.perfil.save()
-        
+
         # É uma boa prática fazer o mesmo para o comprador, caso ele precise no futuro
         self.comprador.perfil.mp_access_token = "TEST_ACCESS_TOKEN_FOR_BUYER"
         self.comprador.perfil.mp_connected = True
