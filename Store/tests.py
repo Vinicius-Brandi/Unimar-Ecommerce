@@ -5,14 +5,13 @@ from unittest import mock
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
-from .models import Categoria, Produto, Carrinho, ItemCarrinho, Order, ItemOrder
+from .models import Categoria, Produto, Carrinho, ItemCarrinho, Order, ItemOrder, Subcategoria
+from Usuario.models import Profile # Importação do seu modelo Profile
 
-#
 import json
 from django.contrib.messages import get_messages
 from django.http import JsonResponse
 from django.core.files.uploadedfile import SimpleUploadedFile
-from unittest import mock
 
 
 class StoreModelsTest(TestCase):
@@ -26,16 +25,18 @@ class StoreModelsTest(TestCase):
             username="comprador_test", password="123"
         )
         self.categoria = Categoria.objects.create(nome="Eletrônicos")
+        self.subcategoria = Subcategoria.objects.create(nome="Teclados", categoria_pai=self.categoria)
+
         self.produto1 = Produto.objects.create(
             vendedor=self.vendedor,
-            categoria=self.categoria,
+            subcategoria=self.subcategoria,
             nome="Teclado",
             preco=decimal.Decimal("150.75"),
             quantidade=10,
         )
         self.produto2 = Produto.objects.create(
             vendedor=self.vendedor,
-            categoria=self.categoria,
+            subcategoria=self.subcategoria,
             nome="Mouse",
             preco=decimal.Decimal("50.00"),
             quantidade=5,
@@ -43,7 +44,7 @@ class StoreModelsTest(TestCase):
 
     def test_carrinho_e_item_carrinho_subtotal_e_total(self):
         """Testa o cálculo do subtotal do item e o total do carrinho."""
-        carrinho = Carrinho.objects.create(usuario=self.comprador)
+        carrinho, _ = Carrinho.objects.get_or_create(usuario=self.comprador)
         item1 = ItemCarrinho.objects.create(
             carrinho=carrinho, produto=self.produto1, quantidade=2
         )
@@ -51,10 +52,7 @@ class StoreModelsTest(TestCase):
             carrinho=carrinho, produto=self.produto2, quantidade=1
         )
 
-        # Testa o subtotal de um item
         self.assertEqual(item1.subtotal(), decimal.Decimal("301.50"))
-
-        # Testa o total do carrinho
         self.assertEqual(carrinho.total(), decimal.Decimal("351.50"))
 
     def test_order_calcular_valor_total(self):
@@ -62,12 +60,11 @@ class StoreModelsTest(TestCase):
         order = Order.objects.create(vendedor=self.vendedor, comprador=self.comprador)
         ItemOrder.objects.create(
             order=order, produto=self.produto1, quantidade=3, preco=self.produto1.preco
-        )  # 3 * 150.75 = 452.25
+        )
         ItemOrder.objects.create(
             order=order, produto=self.produto2, quantidade=4, preco=self.produto2.preco
-        )  # 4 * 50.00 = 200.00
+        )
 
-        # Total esperado: 452.25 + 200.00 = 652.25
         self.assertEqual(order.calcular_valor_total, decimal.Decimal("652.25"))
 
 
@@ -82,29 +79,35 @@ class StoreViewsTest(TestCase):
         self.comprador = User.objects.create_user(
             username="comprador_view", password="123"
         )
-        self.categoria = Categoria.objects.create(nome="View Tests")
+        # ACESSA E ATUALIZA OS PERFIS JÁ CRIADOS PELO SIGNAL
+        # Adicione essas linhas:
+        self.vendedor.perfil.mp_access_token = "TEST_ACCESS_TOKEN_FOR_SELLER"
+        self.vendedor.perfil.save()
+        self.comprador.perfil.mp_access_token = "TEST_ACCESS_TOKEN_FOR_BUYER"
+        self.comprador.perfil.save()
 
-        # Cria uma imagem fake para o produto
+        self.categoria = Categoria.objects.create(nome="View Tests")
+        self.subcategoria = Subcategoria.objects.create(nome="Monitores", categoria_pai=self.categoria)
+
         image_file = SimpleUploadedFile(
             "test.jpg", b"fake_image_data", content_type="image/jpeg"
         )
 
         self.produto = Produto.objects.create(
             vendedor=self.vendedor,
-            categoria=self.categoria,
+            subcategoria=self.subcategoria,
             nome="Monitor Gamer",
             preco=1200.00,
             quantidade=3,
             imagem=image_file,
         )
 
-        # Setup extra para testes do webhook (também com imagem fake)
         image_file_2 = SimpleUploadedFile(
             "test2.jpg", b"fake_image_data", content_type="image/jpeg"
         )
         self.produto_webhook = Produto.objects.create(
             vendedor=self.vendedor,
-            categoria=self.categoria,
+            subcategoria=self.subcategoria,
             nome="Headset",
             preco=300.00,
             quantidade=10,
@@ -113,6 +116,7 @@ class StoreViewsTest(TestCase):
         self.order = Order.objects.create(
             vendedor=self.vendedor, comprador=self.comprador, status_pagamento="pending"
         )
+        Carrinho.objects.get_or_create(usuario=self.comprador)
         self.item = ItemOrder.objects.create(
             order=self.order, produto=self.produto_webhook, quantidade=2, preco=300.00
         )
@@ -121,7 +125,10 @@ class StoreViewsTest(TestCase):
     def test_add_remover_excluir_carrinho(self):
         """Testa o fluxo completo de manipulação do carrinho via views."""
         self.client.login(username="comprador_view", password="123")
+
+        Carrinho.objects.filter(usuario=self.comprador).delete()
         self.assertFalse(Carrinho.objects.filter(usuario=self.comprador).exists())
+
         self.client.get(reverse("adicionar_carrinho", args=[self.produto.id, 2]))
         self.assertTrue(Carrinho.objects.filter(usuario=self.comprador).exists())
         carrinho = Carrinho.objects.get(usuario=self.comprador)
@@ -138,13 +145,21 @@ class StoreViewsTest(TestCase):
     def test_view_pagamento_cria_order_corretamente(self, mock_pagamento):
         mock_pagamento.return_value = reverse("compra_success")
         self.client.login(username="comprador_view", password="123")
-        carrinho = Carrinho.objects.create(usuario=self.comprador)
+
+        carrinho, _ = Carrinho.objects.get_or_create(usuario=self.comprador)
+        # Garante que haja itens para o vendedor específico no carrinho
         ItemCarrinho.objects.create(
             carrinho=carrinho, produto=self.produto, quantidade=1
         )
-        self.assertEqual(Order.objects.count(), 1)
-        response = self.client.get(reverse("pagamento"))
-        self.assertEqual(Order.objects.count(), 2)
+
+        order_count_before = Order.objects.count()
+
+        response = self.client.get(reverse("pagamento", args=[self.vendedor.id]))
+
+        order_count_after = Order.objects.count()
+
+        self.assertEqual(order_count_after, order_count_before + 1)
+
         order = Order.objects.last()
         self.assertEqual(order.vendedor, self.vendedor)
         self.assertEqual(order.comprador, self.comprador)
@@ -157,11 +172,12 @@ class StoreViewsTest(TestCase):
     def test_webhook_success_approved(self, mock_sdk_class):
         mock_sdk = mock_sdk_class.return_value
         mock_sdk.payment().get.return_value = {
+            "status": 200,
             "response": {"status": "approved", "external_reference": self.order_id}
         }
         response = self.client.post(
             reverse("mercadopago_webhook"),
-            data=json.dumps({"data": {"id": "pagamento123"}}),
+            data=json.dumps({"data": {"id": "pagamento123"}, "type": "payment"}),
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 200)
@@ -174,7 +190,7 @@ class StoreViewsTest(TestCase):
     def test_webhook_sem_payment_id(self):
         response = self.client.post(
             reverse("mercadopago_webhook"),
-            data=json.dumps({"data": {}}),
+            data=json.dumps({"data": {}, "type": "payment"}),
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 400)
@@ -228,7 +244,7 @@ class StoreViewsTest(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "carrinho.html")
-        self.assertEqual(response.context["usuario"], self.comprador)
+        self.assertIn("itens_por_vendedor", response.context)
 
     def test_carrinho_view_nao_autenticado(self):
         url = reverse("carrinho")
@@ -237,7 +253,7 @@ class StoreViewsTest(TestCase):
 
     def test_home_view(self):
         """Testa se a view home retorna status 200, usa o template correto e lista os produtos."""
-        url = reverse("home")  # Certifique-se que 'home' está registrado em urls.py
+        url = reverse("home")
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 200)
@@ -249,21 +265,21 @@ class StoreViewsTest(TestCase):
         """Testa adicionar ao carrinho mais unidades do que o estoque disponível."""
         self.client.login(username="comprador_view", password="123")
 
-        # Tenta adicionar mais do que o estoque
-        url = reverse("adicionar_carrinho", args=[self.produto.id, 10])  # estoque é 3
+        carrinho, _ = Carrinho.objects.get_or_create(usuario=self.comprador)
+        carrinho.itens.all().delete()
+
+        url = reverse("adicionar_carrinho", args=[self.produto.id, 10])
         self.client.get(url)
 
-        carrinho = Carrinho.objects.get(usuario=self.comprador)
+        carrinho.refresh_from_db()
         item = carrinho.itens.first()
 
-        # Deve limitar à quantidade máxima em estoque
         self.assertEqual(item.quantidade, self.produto.quantidade)
 
     def test_remover_carrinho_sem_carrinho_existente(self):
         """Testa se a view redireciona corretamente quando não há carrinho."""
         self.client.login(username="comprador_view", password="123")
 
-        # Garante que o usuário não tenha carrinho
         Carrinho.objects.filter(usuario=self.comprador).delete()
 
         response = self.client.get(reverse("remover_carrinho", args=[self.produto.id]))
@@ -273,7 +289,9 @@ class StoreViewsTest(TestCase):
         """Testa a remoção direta de item quando a quantidade é 1."""
         self.client.login(username="comprador_view", password="123")
 
-        carrinho = Carrinho.objects.create(usuario=self.comprador)
+        carrinho, _ = Carrinho.objects.get_or_create(usuario=self.comprador)
+        carrinho.itens.all().delete()
+
         ItemCarrinho.objects.create(
             carrinho=carrinho, produto=self.produto, quantidade=1
         )
@@ -287,21 +305,54 @@ class StoreViewsTest(TestCase):
 class WebhookTestCase(TestCase):
     def setUp(self):
         self.client = Client()
+        self.vendedor = User.objects.create_user(
+            username="vendedor_webhook", password="123"
+        )
+        self.comprador = User.objects.create_user(
+            username="comprador_webhook", password="123"
+        )
+        # ACESSA E ATUALIZA OS PERFIS JÁ CRIADOS PELO SIGNAL
+        # Adicione essas linhas:
+        self.vendedor.perfil.mp_access_token = "TEST_ACCESS_TOKEN_FOR_SELLER_WEBHOOK"
+        self.vendedor.perfil.save()
+        self.comprador.perfil.mp_access_token = "TEST_ACCESS_TOKEN_FOR_BUYER_WEBHOOK"
+        self.comprador.perfil.save()
+
+
+        self.categoria = Categoria.objects.create(nome="Webhook Test Category")
+        self.subcategoria = Subcategoria.objects.create(nome="Webhook Subcategory", categoria_pai=self.categoria)
+        self.produto_webhook = Produto.objects.create(
+            vendedor=self.vendedor,
+            subcategoria=self.subcategoria,
+            nome="Produto Webhook",
+            preco=100.00,
+            quantidade=5,
+            imagem=SimpleUploadedFile("webhook_test.jpg", b"fake_data", content_type="image/jpeg")
+        )
+        self.order = Order.objects.create(
+            vendedor=self.vendedor, comprador=self.comprador, status_pagamento="pending"
+        )
+        Carrinho.objects.get_or_create(usuario=self.comprador)
+        ItemOrder.objects.create(
+            order=self.order, produto=self.produto_webhook, quantidade=2, preco=100.00
+        )
+        self.order_id = str(self.order.id)
+
 
     @mock.patch("Store.views.mercadopago.SDK")
     def test_webhook_sem_external_reference(self, mock_sdk_class):
         """Garante que a ausência de external_reference é tratada corretamente."""
         mock_sdk = mock_sdk_class.return_value
         mock_sdk.payment().get.return_value = {
+            "status": 200,
             "response": {
                 "status": "approved",
-                # external_reference ausente aqui
             }
         }
 
         response = self.client.post(
             reverse("mercadopago_webhook"),
-            data=json.dumps({"data": {"id": "123"}}),
+            data=json.dumps({"data": {"id": "123"}, "type": "payment"}),
             content_type="application/json",
         )
 
