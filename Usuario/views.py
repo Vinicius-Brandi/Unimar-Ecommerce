@@ -208,7 +208,7 @@ def editar_produto(request, id_produto):
             return render(request, "editar_produto.html", {"produto": produto})
         else:
             return redirect("home")
-            
+
     elif request.method == "POST":
         if request.user != produto.vendedor:
             return redirect("home")
@@ -222,13 +222,15 @@ def editar_produto(request, id_produto):
         if imagem:
             caminho_imagem_antiga = ""
             if produto.imagem:
-                caminho_imagem_antiga = os.path.join(settings.MEDIA_ROOT, str(produto.imagem))
+                caminho_imagem_antiga = os.path.join(
+                    settings.MEDIA_ROOT, str(produto.imagem)
+                )
 
             fs = FileSystemStorage(
                 location="media/uploads/produtos/", base_url="/media/uploads/produtos/"
             )
             filename = fs.save(imagem.name, imagem)
-            
+
             produto.imagem = "uploads/produtos/" + filename
 
             if caminho_imagem_antiga and os.path.isfile(caminho_imagem_antiga):

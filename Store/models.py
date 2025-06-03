@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator
 import uuid
 
+
 class Categoria(models.Model):
     nome = models.CharField(max_length=50)
 

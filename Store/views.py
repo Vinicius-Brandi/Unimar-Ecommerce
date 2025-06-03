@@ -74,9 +74,7 @@ def carrinho(request):
     itens_por_vendedor = defaultdict(lambda: {"itens": [], "subtotal": Decimal("0.00")})
     for item in itens_do_carrinho:
         vendedor = item.produto.vendedor
-        subtotal_item = (
-            item.subtotal()
-        )
+        subtotal_item = item.subtotal()
 
         itens_por_vendedor[vendedor]["itens"].append(item)
         itens_por_vendedor[vendedor]["subtotal"] += subtotal_item
@@ -192,38 +190,52 @@ def pagamento(request, vendedor_id):
 
     return redirect(link_pagamento)
 
+
 @csrf_exempt
 def mercadopago_webhook(request):
     if request.method != "POST":
-        return JsonResponse({"status": "error", "message": "Método não permitido"}, status=405)
+        return JsonResponse(
+            {"status": "error", "message": "Método não permitido"}, status=405
+        )
 
     data = json.loads(request.body)
-    
+
     if data.get("type") != "payment":
         return JsonResponse({"status": "ok", "message": "Não é um evento de pagamento"})
 
     payment_id = data.get("data", {}).get("id")
     if not payment_id:
-        return JsonResponse({"status": "error", "message": "ID de pagamento não encontrado"}, status=400)
+        return JsonResponse(
+            {"status": "error", "message": "ID de pagamento não encontrado"}, status=400
+        )
 
     try:
         sdk = mercadopago.SDK(os.getenv("MP_ACCESS_TOKEN"))
         payment_info = sdk.payment().get(payment_id)
-        
+
         if payment_info["status"] != 200:
-            return JsonResponse({"status": "error", "message": "Pagamento não encontrado no Mercado Pago"}, status=404)
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "message": "Pagamento não encontrado no Mercado Pago",
+                },
+                status=404,
+            )
 
         response_data = payment_info["response"]
         payment_status = response_data.get("status")
         external_reference = response_data.get("external_reference")
 
         if not external_reference:
-            return JsonResponse({"status": "error", "message": "Referência externa não encontrada"}, status=400)
+            return JsonResponse(
+                {"status": "error", "message": "Referência externa não encontrada"},
+                status=400,
+            )
 
         pedido = Order.objects.get(id=external_reference)
 
         if payment_status == "approved" and pedido.status_pagamento != "approved":
-            
+
             pedido.status_pagamento = "approved"
             pedido.save()
 
@@ -233,23 +245,36 @@ def mercadopago_webhook(request):
                     produto.quantidade -= item_pedido.quantidade
                     produto.save()
                 else:
-                    print(f"Alerta: Estoque insuficiente para o produto {produto.id} no pedido {pedido.id}")
+                    print(
+                        f"Alerta: Estoque insuficiente para o produto {produto.id} no pedido {pedido.id}"
+                    )
 
             carrinho_usuario = pedido.comprador.carrinho
             ids_produtos_no_pedido = [item.produto.id for item in pedido.itens.all()]
-            ItemCarrinho.objects.filter(carrinho=carrinho_usuario, produto_id__in=ids_produtos_no_pedido).delete()
+            ItemCarrinho.objects.filter(
+                carrinho=carrinho_usuario, produto_id__in=ids_produtos_no_pedido
+            ).delete()
 
         elif pedido.status_pagamento != payment_status:
-             pedido.status_pagamento = payment_status
-             pedido.save()
+            pedido.status_pagamento = payment_status
+            pedido.save()
 
     except Order.DoesNotExist:
-        return JsonResponse({"status": "error", "message": f"Pedido com ID {external_reference} não encontrado"}, status=404)
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": f"Pedido com ID {external_reference} não encontrado",
+            },
+            status=404,
+        )
     except Exception as e:
         print(f"Erro inesperado no webhook: {e}")
-        return JsonResponse({"status": "error", "message": "Erro interno do servidor"}, status=500)
+        return JsonResponse(
+            {"status": "error", "message": "Erro interno do servidor"}, status=500
+        )
 
     return JsonResponse({"status": "ok"})
+
 
 def compra_success(request):
     return render(request, "compra_success.html", {})

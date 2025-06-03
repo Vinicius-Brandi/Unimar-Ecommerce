@@ -5,8 +5,16 @@ from unittest import mock
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
-from .models import Categoria, Produto, Carrinho, ItemCarrinho, Order, ItemOrder, Subcategoria
-from Usuario.models import Profile # Importação do seu modelo Profile
+from .models import (
+    Categoria,
+    Produto,
+    Carrinho,
+    ItemCarrinho,
+    Order,
+    ItemOrder,
+    Subcategoria,
+)
+from Usuario.models import Profile  # Importação do seu modelo Profile
 
 import json
 from django.contrib.messages import get_messages
@@ -25,7 +33,9 @@ class StoreModelsTest(TestCase):
             username="comprador_test", password="123"
         )
         self.categoria = Categoria.objects.create(nome="Eletrônicos")
-        self.subcategoria = Subcategoria.objects.create(nome="Teclados", categoria_pai=self.categoria)
+        self.subcategoria = Subcategoria.objects.create(
+            nome="Teclados", categoria_pai=self.categoria
+        )
 
         self.produto1 = Produto.objects.create(
             vendedor=self.vendedor,
@@ -87,7 +97,9 @@ class StoreViewsTest(TestCase):
         self.comprador.perfil.save()
 
         self.categoria = Categoria.objects.create(nome="View Tests")
-        self.subcategoria = Subcategoria.objects.create(nome="Monitores", categoria_pai=self.categoria)
+        self.subcategoria = Subcategoria.objects.create(
+            nome="Monitores", categoria_pai=self.categoria
+        )
 
         image_file = SimpleUploadedFile(
             "test.jpg", b"fake_image_data", content_type="image/jpeg"
@@ -173,7 +185,7 @@ class StoreViewsTest(TestCase):
         mock_sdk = mock_sdk_class.return_value
         mock_sdk.payment().get.return_value = {
             "status": 200,
-            "response": {"status": "approved", "external_reference": self.order_id}
+            "response": {"status": "approved", "external_reference": self.order_id},
         }
         response = self.client.post(
             reverse("mercadopago_webhook"),
@@ -318,16 +330,19 @@ class WebhookTestCase(TestCase):
         self.comprador.perfil.mp_access_token = "TEST_ACCESS_TOKEN_FOR_BUYER_WEBHOOK"
         self.comprador.perfil.save()
 
-
         self.categoria = Categoria.objects.create(nome="Webhook Test Category")
-        self.subcategoria = Subcategoria.objects.create(nome="Webhook Subcategory", categoria_pai=self.categoria)
+        self.subcategoria = Subcategoria.objects.create(
+            nome="Webhook Subcategory", categoria_pai=self.categoria
+        )
         self.produto_webhook = Produto.objects.create(
             vendedor=self.vendedor,
             subcategoria=self.subcategoria,
             nome="Produto Webhook",
             preco=100.00,
             quantidade=5,
-            imagem=SimpleUploadedFile("webhook_test.jpg", b"fake_data", content_type="image/jpeg")
+            imagem=SimpleUploadedFile(
+                "webhook_test.jpg", b"fake_data", content_type="image/jpeg"
+            ),
         )
         self.order = Order.objects.create(
             vendedor=self.vendedor, comprador=self.comprador, status_pagamento="pending"
@@ -338,7 +353,6 @@ class WebhookTestCase(TestCase):
         )
         self.order_id = str(self.order.id)
 
-
     @mock.patch("Store.views.mercadopago.SDK")
     def test_webhook_sem_external_reference(self, mock_sdk_class):
         """Garante que a ausência de external_reference é tratada corretamente."""
@@ -347,7 +361,7 @@ class WebhookTestCase(TestCase):
             "status": 200,
             "response": {
                 "status": "approved",
-            }
+            },
         }
 
         response = self.client.post(
