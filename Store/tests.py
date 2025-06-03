@@ -688,4 +688,3 @@ class WebhookTestCase(TestCase):
             response.content,
             {"status": "error", "message": "Erro interno do servidor"},
         )
-

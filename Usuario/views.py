@@ -11,6 +11,7 @@ from django.http import Http404
 import requests
 from django.urls import reverse
 from django.contrib.admin.views.decorators import staff_member_required
+from django.conf import settings
 
 
 def cadastrar(request):
