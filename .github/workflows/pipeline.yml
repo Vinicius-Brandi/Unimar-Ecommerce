@@ -12,18 +12,19 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout do código
         uses: actions/checkout@v3
 
       - name: Construir imagem Docker
-        run: docker build -t marketplace-django-app .
+        run: docker build -t marketplace-django-app -f Containerfile .
+
 
       - name: Formatar o código com Black
         run: docker run --rm -v ${{ github.workspace }}:/app -w /app marketplace-django-app black --check .
-   
+
       - name: Análise de Segurança Estática
         run: docker run --rm -v ${{ github.workspace }}:/app -w /app marketplace-django-app bandit -f json -o bandit_report.json .
         continue-on-error: true
@@ -41,7 +42,7 @@ jobs:
 
       - name: Gerar relatório de cobertura em HTML
         run: docker run --rm -v ${{ github.workspace }}:/app -w /app marketplace-django-app coverage html
-        
+
       - name: Publicar HTML do coverage como artefato
         uses: actions/upload-artifact@v4
         with:
