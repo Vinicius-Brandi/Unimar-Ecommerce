@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout do código
-        uses: actions/checkout@v4 # Atualizado para a versão mais recente, se possível
+        uses: actions/checkout@v4
 
       - name: Configurar ambiente Python
         uses: actions/setup-python@v5 # Atualizado para a versão mais recente, se possível
