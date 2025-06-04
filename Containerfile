@@ -38,4 +38,4 @@ USER appuser
 EXPOSE 8000
 
 # Define o script entrypoint que será executado quando o container iniciar
-ENTRYPOINT ["entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
