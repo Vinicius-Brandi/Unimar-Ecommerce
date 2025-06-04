@@ -67,8 +67,6 @@ jobs:
           name: cobertura-html
           path: htmlcov/
 
-  ---
-
   build-and-push-container:
     needs: build-and-test # Este job só executa se o 'build-and-test' for bem-sucedido
     runs-on: ubuntu-latest
