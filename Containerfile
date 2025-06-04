@@ -19,15 +19,23 @@ RUN pip install --no-cache-dir -r /requirements.txt
 RUN mkdir /app
 WORKDIR /app
 
+# Copia o restante do código da aplicação
 COPY . .
 
-COPY entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/entrypoint.sh
+# Copia o entrypoint.sh para um local temporário, remove as quebras de linha CRLF,
+# adiciona permissão de execução e então move para o local final.
+# Isso garante que o script seja executável e interpretável no ambiente Linux.
+COPY entrypoint.sh /tmp/entrypoint.sh
+RUN sed -i 's/\r$//' /tmp/entrypoint.sh && \
+    chmod +x /tmp/entrypoint.sh && \
+    mv /tmp/entrypoint.sh /usr/local/bin/entrypoint.sh
 
+# Cria um usuário não-root para segurança
 RUN adduser -D appuser
 USER appuser
 
+# Expõe a porta que a aplicação Gunicorn irá usar
 EXPOSE 8000
 
+# Define o script entrypoint que será executado quando o container iniciar
 ENTRYPOINT ["entrypoint.sh"]
-
