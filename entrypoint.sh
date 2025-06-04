@@ -1,22 +1,13 @@
-#!/bin/sh
+#!/bin/bash
 
-# Este é um exemplo simples de espera pelo banco de dados.
-# Para ambientes de produção, considere usar uma ferramentas mais robustas como 'wait-for-it.sh'
-# ou 'dockerize' se precisar de uma espera mais sofisticada.
-# Certifique-se de que 'nc' (netcat) ou a ferramenta de espera esteja disponível na sua imagem se for usar.
-# Exemplo básico de espera (descomente e ajuste se necessário):
-# echo "Waiting for database connection..."
-# while ! nc -z <host_do_banco_de_dados> <porta_do_banco_de_dados>; do
-#   sleep 1
-# done
-# echo "Database connection established!"
+# Adiciona /app ao PYTHONPATH para garantir que o Python encontre os módulos do projeto
+export PYTHONPATH="/app:$PYTHONPATH"
 
-# Aplica as migrações do banco de dados
-# O --noinput evita perguntas interativas, ideal para automação em CI/CD
+# Aplica migrações do banco de dados
 echo "Applying database migrations..."
-python manage.py migrate --noinput
+python manage.py migrate --noinput || exit 1 # Adicionado --noinput e exit 1 para falha de migração
 
-# Inicia o servidor WSGI de produção (Gunicorn)
-# Substitua 'seu_projeto' pelo nome do módulo principal do seu projeto Django (onde está wsgi.py)
+# Inicia o servidor Gunicorn
 echo "Starting Gunicorn server..."
-exec gunicorn Core.wsgi:application --bind 0.0.0.0:8000
+# A última parte do comando do Gunicorn deve ser 'Core.wsgi:application'
+exec gunicorn Core.wsgi:application --bind 0.0.0.0:8000 --workers 3 # Exemplo, ajuste conforme necessário
